@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\CustomerAuthController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -15,4 +17,14 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
+});
+
+
+// Route::get('/customer/verify-email', [CustomerAuthController::class, 'verifyEmail'])->name('customer.verify.email');
+// Route::get('/customer/resend-verification', [CustomerAuthController::class, 'resendVerification'])->name('customer.resend.verification');
+
+// routes/web.php
+Route::prefix('customer')->group(function () {
+    Route::get('register', [CustomerAuthController::class, 'showRegisterForm'])->name('customer.register.form');
+    Route::post('register', [CustomerAuthController::class, 'register'])->name('customer.register');
 });
