@@ -44,24 +44,24 @@ class VerifyCustomerEmail extends Mailable
      *
      * @return \Illuminate\Mail\Mailables\Envelope
      */
-    public function envelope()
-    {
-        return new Envelope(
-            subject: 'Verify Customer Email',
-        );
-    }
+    // public function envelope()
+    // {
+    //     return new Envelope(
+    //         subject: 'Verify Customer Email',
+    //     );
+    // }
 
     /**
      * Get the message content definition.
      *
      * @return \Illuminate\Mail\Mailables\Content
      */
-    public function content()
-    {
-        return new Content(
-            view: 'view.name',
-        );
-    }
+    // public function content()
+    // {
+    //     return new Content(
+    //         view: 'view.name',
+    //     );
+    // }
 
     /**
      * Get the attachments for the message.

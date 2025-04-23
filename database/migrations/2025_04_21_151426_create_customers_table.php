@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('country_code');
             $table->string('phone_number');
+            $table->timestamp('email_verified_at')->nullable();
             $table->boolean('is_active')->default(false); 
 
             $table->timestamps();

@@ -28,3 +28,6 @@ Route::prefix('customer')->group(function () {
     Route::get('register', [CustomerAuthController::class, 'showRegisterForm'])->name('customer.register.form');
     Route::post('register', [CustomerAuthController::class, 'register'])->name('customer.register');
 });
+
+Route::get('/customer/verify-email', [CustomerAuthController::class, 'verifyEmail'])->name('verify.email');
+
