@@ -1,13 +1,26 @@
 @extends('layouts.customer')
 
 @section('content')
-<div class="container py-3">
-  <div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-      <div class="card shadow-lg border-0 rounded-4">
+
+@if ($errors->has('msg'))
+    <div class="alert alert-danger">{{ $errors->first('msg') }}</div>
+@endif
+
+<div class="container-fluid vh-100">
+  <div class="row h-100">
+    {{-- the image --}}
+    <div class="col-lg-6 d-none d-lg-flex align-items-center justify-content-center p-0">
+      <img src="{{ asset('images/sign-up.png') }}"
+           alt="Signup Illustration"
+           class="img-fluid"
+           style="max-height: 90%;">
+    </div>
+
+    {{-- register form --}}
+    <div class="col-12 col-lg-6 d-flex align-items-center justify-content-center">
+      <div class="card shadow-lg border-0 rounded-4 w-75">
         <div class="card-body p-4">
           <h4 class="mb-3 text-center fw-semibold">Create Your Account</h4>
-
           <form method="POST" action="{{ route('customer.register') }}" novalidate>
             @csrf
 
@@ -36,11 +49,11 @@
             {{-- Phone + Country Code --}}
             <div class="mb-2">
               <label class="form-label">Phone Number</label>
-              <div class="row g-2">
-                <div class="col-4">
-                  <input type="number" 
-                         id="country_code" 
-                         name="country_code" 
+              <!-- <div class="row g-2"> -->
+                <!-- <div class="col-4">
+                  <input type="number"
+                         id="country_code"
+                         name="country_code"
                          value="{{ old('country_code') }}"
                          class="form-control @error('country_code') is-invalid @enderror"
                          placeholder="Code" min="0" max="999"
@@ -48,20 +61,20 @@
                   @error('country_code')
                     <div class="invalid-feedback d-block">{{ $message }}</div>
                   @enderror
-                </div>
-                <div class="col-8">
-                  <input type="text" 
-                         id="phone" 
-                         name="phone" 
+                </div> -->
+                <!-- <div class="col-8"> -->
+                  <input type="text"
+                         id="phone"
+                         name="phone"
                          value="{{ old('phone') }}"
-                         class="form-control @error('phone') is-invalid @enderror" 
+                         class="form-control @error('phone') is-invalid @enderror"
                          placeholder="Phone number"
                          required>
                   @error('phone')
                     <div class="invalid-feedback d-block">{{ $message }}</div>
                   @enderror
-                </div>
-              </div>
+                <!-- </div> -->
+              <!-- </div> -->
               <div class="form-text">Enter in international format, e.g. +441234567890</div>
             </div>
 
@@ -97,4 +110,6 @@
     </div>
   </div>
 </div>
+
+
 @endsection

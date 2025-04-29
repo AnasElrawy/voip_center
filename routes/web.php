@@ -25,9 +25,21 @@ Route::get('/', function () {
 
 // routes/web.php
 Route::prefix('customer')->group(function () {
+
     Route::get('register', [CustomerAuthController::class, 'showRegisterForm'])->name('customer.register.form');
     Route::post('register', [CustomerAuthController::class, 'register'])->name('customer.register');
-});
+    
+    Route::get('verify-email', [CustomerAuthController::class, 'verifyEmail'])->name('verify.email');
+    
+    Route::get('verify-notice', [CustomerAuthController::class, 'showVerifyNotice']) ->name('customer.verify.notice');
+    
+    Route::get('verify-resend', [CustomerAuthController::class, 'showResendForm'])->name('customer.verify.resend.form');
+    Route::post('verify-resend', [CustomerAuthController::class, 'resendVerificationEmail'])->name('customer.verify.resend');
 
-Route::get('/customer/verify-email', [CustomerAuthController::class, 'verifyEmail'])->name('verify.email');
+    Route::get('login', [CustomerAuthController::class, 'showLoginForm']) ->name('customer.login');
+    Route::post('login', [CustomerAuthController::class, 'login'])->name('customer.login.submit');
+    
+    Route::post('logout', [CustomerAuthController::class, 'logout']) ->name('customer.logout');
+    
+});
 

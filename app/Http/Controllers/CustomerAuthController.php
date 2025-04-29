@@ -22,197 +22,305 @@ class CustomerAuthController extends Controller
 
     public function showRegisterForm()
     {
-        return view('auth.customer-register');
+        return view('auth.register');
     }
+
 
     public function register(Request $request)
     {
-        // $request->validate([
-        //     'email' => 'required|email|unique:customers,email',
-        //     'username' => 'required|unique:customers,username',
-        //     'phone' => 'required',
-        //     'country_code' => 'required',
-        //     'customerpassword' => 'required|min:6',
-        // ]);
+        $request->validate([
+            'email' => 'required|email|unique:customers,email',
+            'username' => 'required|unique:customers,username|regex:/^[a-zA-Z0-9_\-\.@]+$/',
+            'phone' => [
+                'required',
+                'regex:/^\+?[1-9][0-9]{6,15}$/',
+                function ($attribute, $value, $fail) {
+                    if (preg_match('/(.)\1{3,}/', $value)) {
+                        $fail("The phone number must not contain repeated digits.");
+                    }
+                }
+            ],
+            'customerpassword' => [
+                'required',
+                'string',
+                'min:4',
+                'max:39',
+                'regex:/^[a-zA-Z0-9_\-@.]+$/',
+                function ($attribute, $value, $fail) {
+                    $lower = strtolower($value);
+                    $sequence = 'abcdefghijklmnopqrstuvwxyz0123456789';
+                    for ($i = 0; $i <= strlen($sequence) - 4; $i++) {
+                        if (strpos($lower, substr($sequence, $i, 4)) !== false) {
+                            $fail("The $attribute must not contain sequential characters.");
+                            break;
+                        }
+                    }
+                }
+            ],
+        ]);
+    
+        try {
+            DB::beginTransaction();
+    
+            // 1. Store customer locally
+            $customer = Customer::create([
+                'email' => $request->email,
+                'username' => $request->username,
+                'phone_number' => $request->phone,
+                'country_code' => $request->country_code,
+                'is_active' => false,
+            ]);
+    
+            // 2. Store customer in API
+            $createCustomerApiResponse = Http::get('https://www.voipinfocenter.com/API/Request.ashx', [
+                'command' => 'createcustomer',
+                'username' => env('VOIP_RESELLER_USERNAME'),
+                'password' => env('VOIP_RESELLER_PASSWORD'),
+                'customer' => $request->username,
+                'customerpassword' => $request->customerpassword,
+                'geocallcli' => urlencode($request->phone),
+            ]);
+    
+            $xml = simplexml_load_string($createCustomerApiResponse->body());
 
-        // $request->validate([
-        //     'email' => 'required|email|unique:customers,email',
-        
-        //     'username' => 'required|unique:customers,username|regex:/^[a-zA-Z0-9_\-\.@]+$/',
-        
-        //     'phone' => [
-        //         'required',
-        //         'regex:/^\+?[1-9][0-9]{6,15}$/',
-        //         function ($attribute, $value, $fail) {
-        //             if (preg_match('/(.)\1{3,}/', $value)) {
-        //                 $fail("The phone number must not contain repeated digits.");
-        //             }
-        //         }
-        //     ],
-        
-        //     'country_code' => 'required|numeric|between:0,999',
-        
-        //     'customerpassword' => [
-        //         'required',
-        //         'string',
-        //         'min:4',
-        //         'max:39',
-        //         'regex:/^[a-zA-Z0-9_\-@.]+$/',
-        //         function ($attribute, $value, $fail) {
-        //             // Check for repeated patterns (e.g., 'aaaa', '1111')
-        //             if (preg_match('/(.)\1{3,}/', $value)) {
-        //                 $fail("The $attribute must not contain repeated characters.");
-        //             }
-        
-        //             // Check for incremental sequences (e.g., 1234, abcd)
-        //             $lower = strtolower($value);
-        //             $sequence = 'abcdefghijklmnopqrstuvwxyz0123456789';
-        
-        //             for ($i = 0; $i <= strlen($sequence) - 4; $i++) {
-        //                 if (strpos($lower, substr($sequence, $i, 4)) !== false) {
-        //                     $fail("The $attribute must not contain sequential characters.");
-        //                     break;
-        //                 }
-        //             }
-        //         }
-        //     ],
-        // ]);
-        
-        // dd($request);
+            if (!$xml || (string) $xml->Result !== 'Success') {
 
+                $customer->delete();
+                DB::rollBack();
+            
+                return back()->withErrors([
+                    'username' => 'This username might already be taken on our provider. Please choose another one.',
+                ])->withInput();
+            }
+            
+    
+            // 3. Temporarily block the customer 
+            $changeuserinfoApiResponse = Http::get('https://www.voipinfocenter.com/API/Request.ashx', [
+                'command' => 'changeuserinfo',
+                'username' => env('VOIP_RESELLER_USERNAME'),
+                'password' => env('VOIP_RESELLER_PASSWORD'),
+                'customer' => $request->username,
+                'customerblocked' => 'true',
+            ]);
+    
+    
+            // 4. Generate email verification token
+            do {
+                $token = Str::random(64); 
+            
+                $existingToken = EmailVerification::where('token', $token)->first();
 
-        // // 1. تخزين بيانات العميل في جدول customers
-        // $customer = Customer::create([
-        //     'email' => $request->email,
-        //     'username' => $request->username,
-        //     'phone' => $request->phone,
-        //     'country_code' => $request->country_code,
-        //     'is_verified' => false,
-        // ]);
+            } while ($existingToken); 
+                
+            EmailVerification::create([
+                'email' => $request->email,
+                'token' => $token,
+                'expires_at' => Carbon::now()->addMinutes(30),
+            ]);
+    
+            // 5. Send verification email
+            Mail::to($request->email)->send(new \App\Mail\VerifyCustomerEmail($token, $request->email));
+    
+            DB::commit();
+    
+            return redirect()->route('customer.verify.notice');
+    
+        } catch (\Exception $e) {
+            DB::rollBack();
+    
+            return back()->withErrors([
+                'msg' => 'An error occurred during registration: ' . $e->getMessage(),
+            ])->withInput();
+        }
+    }
+    
 
-        // env('VOIP_RESELLER_USERNAME'),
-        // 2.
-        // $createcustomerApiResponse = Http::get('https://www.voipinfocenter.com/API/Request.ashx', [
-        //     'command' => 'createcustomer',
-        //     'username' => 'callsland',
-        //     'password' => 'trafficzone',
-        //     'customer' => 'Anas1',
-        //     'customerpassword' => '123456789',
-        // ]);
-
-        // $apiResponse = Http::get('https://www.voipinfocenter.com/API/Request.ashx', [
-        //     'command' => 'createcustomer',
-        //     'username' => 'callsland',
-        //     'password' => 'trafficzone',
-        //     'customer' => 'Anas1',
-        //     'customerpassword' => 'securePass123',
-        //     'geocallcli' => '%2B201090388845',
-        //     'tariffrate' => '123', // مثال لمعدل التعريفة
-        //     'country' => '826', // كود الدولة (مثال: 826 لبريطانيا)
-        //     'timezone' => 'GMT Standard Time',
-        // ]);
-
-        // logger($apiResponse->body()); // أو
-        // dd($apiResponse->body());
-        // if ($apiResponse->failed() || !str_contains($apiResponse->body(), 'Success')) {
-        //     // $customer->delete();
-        //     return back()->withErrors(['msg' => 'Something went wrong with API, please try again later.']);
-        // }
-
-        // 3. Block العميل مؤقتًا من الـ API
-        // $changeuserinfoApiResponse = Http::get('https://www.voipinfocenter.com/API/Request.ashx', [
-        //     'command' => 'changeuserinfo',
-        //     'username' => 'callsland',
-        //     'password' => 'trafficzone',
-        //     'customer' => 'Anas1',
-        //     'customerblocked' => 'true',
-        // ]);
-
-
-
-
-        // logger($changeuserinfoApiResponse->body()); // أو
-        // dd($changeuserinfoApiResponse->body());
-
-        // 4. إنشاء توكن توثيق الإيميل
-        // $token = Str::random(64);
-        // EmailVerification::create([
-        //     'email' => 'anaselrawy99@gmail.com',
-        //     'token' => $token,
-        //     'expires_at' => Carbon::now()->addMinutes(30),
-        // ]);
-
-        // 5. إرسال الإيميل
-        // Mail::to('anaselrawy99@gmail.com')->send(new \App\Mail\VerifyCustomerEmail($token,'anaselrawy99@gmail.com'));
-
-        // return back()->with('message', 'Check your email to verify your account.');
+    public function showVerifyNotice()
+    {
+        return view('auth.verify-notice');
     }
 
 
-    
-public function verifyEmail(Request $request)
-{
-    // 1. الحصول على التوكن والبريد الإلكتروني من الرابط
-    $token = $request->query('token');
-    $email = $request->query('email');
+    public function verifyEmail(Request $request)
+    {
+        $token = $request->query('token');
+        $email = $request->query('email');
 
-    // 2. التحقق من وجود التوكن والبريد الإلكتروني في قاعدة البيانات
-    $emailVerification = EmailVerification::where('email', $email)
-                                         ->where('token', $token)
-                                         ->first();
+        $customer = Customer::where('email', $email)->first();
 
-                                        //  dd($token,$email,$emailVerification);
+        ////1. check 
 
-    // if (!$emailVerification) {
-    //     return redirect()->route('login')->withErrors(['msg' => 'Invalid or expired verification link.']);
-    // }
-
-    // // 3. التحقق من صلاحية التوكن (إذا انتهت صلاحية التوكن)
-    // if (Carbon::now()->gt($emailVerification->expires_at)) {
-    //     return redirect()->route('login')->withErrors(['msg' => 'The verification link has expired.']);
-    // }
-
-        //     $customer = Customer::create([
-        //     'email' => 'anaselrawy99@gmail.com',
-        //     'username' => 'Anas1',
-        //     'phone_number' => '01090388845',
-        //     'country_code' => '+20',
-        //     'is_active' => false,
-        // ]);
-
-
-    // 4. إذا كانت كل الشروط صحيحة، قم بتفعيل الحساب
-    DB::beginTransaction();
-    try {
-        // فعل الحساب أو المستخدم هنا
-        // مثلا إذا كان لديك جدول users، يمكنك فعل ذلك
-        $Customer = Customer::where('email', $email)->first();
-        if ($Customer) {
-            $Customer->email_verified_at = Carbon::now();
-            $Customer->is_active = true;
-            $Customer->save();
+        // If the customer doesn't exist, redirect to registration with error
+        if (!$customer) {
+            return redirect()->route('register')->withErrors(['msg' =>  'We couldn’t find your email address. Please register first.']);
         }
 
-         // 3. Block العميل مؤقتًا من الـ API
-        $changeuserinfoApiResponse = Http::get('https://www.voipinfocenter.com/API/Request.ashx', [
-            'command' => 'changeuserinfo',
-            'username' => 'callsland',
-            'password' => 'trafficzone',
-            'customer' => 'Anas1',
-            'customerblocked' => 'false',
+        // If the email is already verified and the account is active, redirect to login
+        if ($customer->is_active && $customer->email_verified_at) {
+            return redirect()->route('login')->with('message', 'Your email is already verified. Please log in.');
+        }
+
+        $emailVerification = EmailVerification::where('token', $token)->first();
+
+        // If the token is invalid or doesn't match the email, show error
+        if (!$emailVerification || $emailVerification->email !== $email) {
+            return redirect()->route('login')->withErrors(['msg' => 'Invalid or expired verification link.']);
+        }
+
+        // If the verification link has expired, redirect to resend page with message
+        if (Carbon::now()->gt($emailVerification->expires_at)) {
+
+            // do {
+            //     $token = Str::random(64); 
+            
+            //     $existingToken = EmailVerification::where('token', $token)->first();
+                
+            // } while ($existingToken); 
+                
+            // EmailVerification::create([
+            //     'email' => $email,
+            //     'token' => $token,
+            //     'expires_at' => Carbon::now()->addMinutes(30),
+            // ]);
+    
+            // // 5. Send verification email
+
+            // Mail::to($email)->send(new \App\Mail\VerifyCustomerEmail($token, $email));     
+            
+            // return redirect()->route('login')->withErrors(['msg' => 'The verification link has expired.']);
+
+            return redirect()->route('customer.verify.resend')->with('message', 'The verification link has expired. Please enter your email to receive a new one.');
+
+        }
+
+        //// 2.Unblock the customer in the external VoIP system
+        try {
+
+            $changeuserinfoApiResponse = Http::get('https://www.voipinfocenter.com/API/Request.ashx', [
+                'command' => 'changeuserinfo',
+                'username' => 'callsland',
+                'password' => 'trafficzone',
+                'customer' => $customer->username,  
+                'customerblocked' => 'false', 
+            ]);
+
+            if ($changeuserinfoApiResponse->failed()) {
+                return redirect()->route('login')->withErrors(['msg' => 'We couldn’t connect to the verification service. Please try again later.']);
+            }
+            
+            $responseXml = simplexml_load_string($changeuserinfoApiResponse->body());
+            // Check if the response contains Result and Reason
+            if ($responseXml->Result == 'Failed') {
+                $reason = (string)$responseXml->Reason; // Get the reason for failure
+                
+                // Custom messages based on the reason
+                if ($reason == 'Unknown customer') {
+                    return redirect()->route('login')->withErrors(['msg' => 'We couldn’t find your account. Please check the information you entered.']);
+                }
+                
+                // If the request failed partially
+                return redirect()->route('login')->withErrors(['msg' => 'We couldn’t connect to the verification service. Please try again later.']);
+            }
+
+
+        } catch (\Exception $e) {
+            return redirect()->route('login')->withErrors(['msg' =>'We couldn’t connect to the verification service. Please try again later.']);
+        }
+
+        //// 3. Update the database: verify the customer's email and activate the account
+        DB::beginTransaction();
+        try {
+            $customer = Customer::where('email', $email)->first();
+
+            if ($customer) {
+                $customer->email_verified_at = Carbon::now(); 
+                $customer->is_active = true; 
+                $customer->save();
+            }
+
+            EmailVerification::where('email', $email)->delete();
+
+            DB::commit();  
+
+            return redirect()->route('login')->with('message', 'Your email has been successfully verified. You can now log in.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();  
+            return redirect()->route('login')->withErrors(['msg' => 'Something went wrong. Please try again later.']);
+        }
+    }
+
+    public function showResendForm()
+    {
+        return view('auth.verify-resend');
+    }
+
+    public function resendVerificationEmail(Request $request)
+    {
+
+        $request->validate([
+            'email' => 'required|email|exists:customers,email',
+        ], [
+            'email.exists' => 'We couldn’t find an account with that email address.',
         ]);
 
+        $customer = Customer::where('email', $request->email)->first();
+        if ($customer && $customer->email_verified_at) {
+            return redirect()->route('customer.login')->with('message', 'Your email is already verified. You can login now.');
+        }
 
-        // حذف التوكن بعد التحقق
-        $emailVerification->delete();
+        do {
+            $token = Str::random(64); 
+        
+            $existingToken = EmailVerification::where('token', $token)->first();
+            
+        } while ($existingToken); 
+        EmailVerification::create([
+            'email' => $request->email,
+            'token' => $token,
+            'expires_at' => Carbon::now()->addMinutes(30),
+        ]);
 
-        DB::commit();
+        Mail::to($request->email)->send(new VerifyCustomerEmail($token, $request->email));
 
-        // 5. إعادة توجيه المستخدم إلى صفحة النجاح
-        // return redirect()->route('login')->with('message', 'Your email has been successfully verified. You can now log in.');
-    } catch (\Exception $e) {
-        DB::rollBack();
-        // return redirect()->route('login')->withErrors(['msg' => 'Something went wrong. Please try again later.']);
+        // return redirect()->route('customer.login')->with('message', 'A new verification link has been sent to your email.');
+        
+
+        return back()->with('success', 'Verification email has been resent successfully.');
     }
-}
+
+    
+    public function showLoginForm()
+    {
+        return view('auth.login');
+    }
+
+    public function login(Request $request)
+    {
+        // التحقق من صحة المدخلات (البريد الإلكتروني وكلمة المرور)
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|min:8',
+        ]);
+
+        // محاولة تسجيل الدخول
+        if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
+            $user = Auth::user();
+
+            // التحقق إذا كان البريد الإلكتروني مفعلًا
+            if (!$user->email_verified_at) {
+                // إذا لم يكن مفعلًا، نوجهه إلى صفحة التنبيه مع رسالة
+                return redirect()->route('customer.verify.resend')->with('message', 'Your email is not verified. Please verify your email.');
+            }
+
+            // إذا كان مفعلًا، نسمح له بالدخول
+            return redirect()->route('customer.dashboard');
+        } else {
+            return redirect()->route('customer.login')->withErrors(['msg' => 'Invalid credentials.']);
+        }
+    }
+
+
+
+
 }
