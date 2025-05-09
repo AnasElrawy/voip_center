@@ -5,9 +5,6 @@
 <div class="container-fluid vh-100">
   <div class="row h-100">
 
-  @if(session('success'))
-    <div class="alert alert-success">{{ session('success') }}</div>
-  @endif
 
     {{-- the image --}}
     <div class="col-lg-6 d-none d-lg-flex align-items-center justify-content-center p-0">
@@ -17,27 +14,17 @@
            style="max-height: 90%;">
     </div>
 
-    {{-- message --}}
+
     <div class="col-12 col-lg-6 d-flex align-items-center justify-content-center">
       <div class="card shadow-lg border-0 rounded-4 w-75">
         <div class="card-body p-4 text-center">
 
           <h4 class="mb-3 fw-semibold">Resend Email Verification</h4>
           
-          {{-- Check if there's any message --}}
-          @if(session('message'))
-            <div class="alert alert-info">
-                <p class="mb-4">
-                    <!-- {{ session('message') }}  -->
-                    The verification link has expired.<br>
-                    Please enter your email address below to receive a new verification link.
-                </p>
-            </div>
-          @else
-            <p class="mb-4">
-              Please enter your email address below to receive a new verification link.
-            </p>
-          @endif
+
+          <p class="mb-4">
+            Please enter your email address below to receive a new verification link.
+          </p>
 
           {{-- Form to enter email --}}
           <form action="{{ route('customer.verify.resend') }}" method="POST">
@@ -58,7 +45,7 @@
           {{-- Back to login --}}
           <p class="mt-2">
             Already verified? 
-            <a href="{{ route('customer.login') }}" class="text-decoration-underline">
+            <a href="{{ route('customer.login.form') }}" class="text-decoration-underline">
               Go to Login
             </a>
           </p>

@@ -7,7 +7,15 @@
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <!-- Custom CSS -->
-  <link href="{{ asset('css/customer.css') }}" rel="stylesheet">
+  <!-- <link href="{{ asset('css/customer.css') }}" rel="stylesheet"> -->
+
+  <!-- for intl-tel -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.3.1/build/css/intlTelInput.css">
+  <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.3.1/build/js/intlTelInput.min.js"></script>
+
+  <!-- for axios -->
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
 </head>
 <body class="bg-light">
 
@@ -40,25 +48,29 @@
               </ul>
             </li>
           @else
-            <li class="nav-item"><a class="nav-link" href="">Login</a></li>
-            <li class="nav-item"><a class="nav-link" href="">Sign Up</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ route ('customer.login.form')}}">Login</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ route ('customer.register.form')}}">Sign Up</a></li>
           @endauth
         </ul>
       </div>
     </div>
   </nav>
 
-  <!-- Flash Messages -->
-  <div class="container mt-4">
-    @foreach (['success','error','info','warning'] as $msg)
-      @if(session($msg))
-        <div class="alert alert-{{ $msg }} alert-dismissible fade show" role="alert">
-          {{ session($msg) }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-      @endif
-    @endforeach
-  </div>
+@php
+  $alertTypes = ['success' => 'success', 'error' => 'danger', 'info' => 'info', 'warning' => 'warning'];
+@endphp
+
+<div class="container mt-4">
+  @foreach ($alertTypes as $msg => $alertClass)
+    @if(session($msg))
+      <div class="alert alert-{{ $alertClass }} alert-dismissible fade show" role="alert">
+        {{ session($msg) }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    @endif
+  @endforeach
+</div>
+
 
   <!-- Page Content -->
   <main class="container my-4">

@@ -12,9 +12,9 @@
                 <div class="card-body p-4">
                     <h4 class="mb-3 text-center fw-semibold">Welcome Back</h4>
 
-                    @if(session('success'))
+                    <!-- @if(session('success'))
                         <div class="alert alert-success">{{ session('success') }}</div>
-                    @endif
+                    @endif -->
 
                     @if ($errors->has('msg'))
                         <div class="alert alert-danger">{{ $errors->first('msg') }}</div>
@@ -23,14 +23,15 @@
                     <form method="POST" action="{{ route('customer.login.submit') }}" novalidate>
                         @csrf
 
-                        {{-- Email --}}
+                        {{-- Username --}}
                         <div class="mb-3">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" id="email" name="email" value="{{ old('email') }}" class="form-control @error('email') is-invalid @enderror" required autofocus>
-                            @error('email')
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" id="username" name="username" value="{{ old('username') }}" class="form-control @error('username') is-invalid @enderror" required autofocus>
+                            @error('username')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
 
                         {{-- Password --}}
                         <div class="mb-3">

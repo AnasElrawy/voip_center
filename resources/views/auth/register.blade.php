@@ -24,11 +24,32 @@
           <form method="POST" action="{{ route('customer.register') }}" novalidate>
             @csrf
 
+            {{-- First and Last Name --}}
+            <div class="row mb-3">
+              <div class="col-6">
+                <label for="first_name" class="form-label">First Name</label>
+                <input type="text" id="first_name" name="first_name" value="{{ old('first_name') }}"
+                       class="form-control @error('first_name') is-invalid @enderror" required>
+                @error('first_name')
+                  <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+              </div>
+
+              <div class="col-6">
+                <label for="last_name" class="form-label">Last Name</label>
+                <input type="text" id="last_name" name="last_name" value="{{ old('last_name') }}"
+                       class="form-control @error('last_name') is-invalid @enderror" required>
+                @error('last_name')
+                  <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+              </div>
+            </div>
+
             {{-- Email --}}
             <div class="mb-2">
               <label for="email" class="form-label">Email</label>
               <input type="email" id="email" name="email" value="{{ old('email') }}"
-                class="form-control @error('email') is-invalid @enderror" required>
+                     class="form-control @error('email') is-invalid @enderror" required>
               @error('email')
                 <div class="invalid-feedback">{{ $message }}</div>
               @else
@@ -40,41 +61,20 @@
             <div class="mb-2">
               <label for="username" class="form-label">Username</label>
               <input type="text" id="username" name="username" value="{{ old('username') }}"
-                class="form-control @error('username') is-invalid @enderror" required>
+                     class="form-control @error('username') is-invalid @enderror" required>
               @error('username')
                 <div class="invalid-feedback">{{ $message }}</div>
               @enderror
             </div>
 
-            {{-- Phone + Country Code --}}
+            {{-- Phone --}}
             <div class="mb-2">
               <label class="form-label">Phone Number</label>
-              <!-- <div class="row g-2"> -->
-                <!-- <div class="col-4">
-                  <input type="number"
-                         id="country_code"
-                         name="country_code"
-                         value="{{ old('country_code') }}"
-                         class="form-control @error('country_code') is-invalid @enderror"
-                         placeholder="Code" min="0" max="999"
-                         required>
-                  @error('country_code')
-                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                  @enderror
-                </div> -->
-                <!-- <div class="col-8"> -->
-                  <input type="text"
-                         id="phone"
-                         name="phone"
-                         value="{{ old('phone') }}"
-                         class="form-control @error('phone') is-invalid @enderror"
-                         placeholder="Phone number"
-                         required>
-                  @error('phone')
-                    <div class="invalid-feedback d-block">{{ $message }}</div>
-                  @enderror
-                <!-- </div> -->
-              <!-- </div> -->
+              <input type="text" id="phone" name="phone" value="{{ old('phone') }}"
+                     class="form-control @error('phone') is-invalid @enderror" placeholder="Phone number" required>
+              @error('phone')
+                <div class="invalid-feedback d-block">{{ $message }}</div>
+              @enderror
               <div class="form-text">Enter in international format, e.g. +441234567890</div>
             </div>
 
@@ -82,7 +82,7 @@
             <div class="mb-2">
               <label for="customerpassword" class="form-label">Password</label>
               <input type="password" id="customerpassword" name="customerpassword"
-                class="form-control @error('customerpassword') is-invalid @enderror" required>
+                     class="form-control @error('customerpassword') is-invalid @enderror" required>
               @error('customerpassword')
                 <div class="invalid-feedback">{{ $message }}</div>
               @else
@@ -94,11 +94,22 @@
             <div class="mb-3">
               <label for="customerpassword_confirmation" class="form-label">Confirm Password</label>
               <input type="password" id="customerpassword_confirmation" name="customerpassword_confirmation"
-                class="form-control @error('customerpassword_confirmation') is-invalid @enderror" required>
+                     class="form-control @error('customerpassword_confirmation') is-invalid @enderror" required>
               @error('customerpassword_confirmation')
                 <div class="invalid-feedback">{{ $message }}</div>
               @enderror
             </div>
+
+            {{-- timezone --}}
+            <input type="hidden" name="timezone" id="timezone" />
+
+            {{-- CountryData --}}
+            <input type="hidden" name="CountryData" id="CountryData" />
+
+            {{-- ip_address --}}
+
+            <input type="hidden" name="ip_address" />
+
 
             {{-- Submit --}}
             <button type="submit" class="btn btn-primary w-100 py-2 fs-6 rounded-pill">
@@ -111,5 +122,102 @@
   </div>
 </div>
 
+
+<style>
+  .iti { width: 100%; }
+</style>
+<script type="module">
+
+
+
+// const options = {
+//   method: 'GET',
+//   url: 'https://api.ipstack.com/check?access_key=acbd972255e8ed03166d3392b7084189',
+// };
+
+// try {
+// 	const response = await axios.request(options);
+// 	console.log(response.data);
+// } catch (error) {
+// 	console.error(error);
+// }
+
+// const url = 'https://api.ipstack.com/check?access_key={acbd972255e8ed03166d3392b7084189}';
+// const options = {
+// 	method: 'GET'
+// };
+
+// try {
+// 	const response = await fetch(url, options);
+// 	const result = await response.text();
+// 	console.log(result);
+// } catch (error) {
+// 	console.error(error);
+// }
+
+// fetch('https://api.ipstack.com/check?access_key=acbd972255e8ed03166d3392b7084189')
+// .then(function(response) {
+//   response.json().then(jsonData => {
+//     console.log(jsonData);
+//   });
+// })
+// .catch(function(error) {
+//   console.log(error)
+// });
+
+// fetch('https://ipapi.co/8.8.8.8/json/')
+// .then(function(response) {
+//   response.json().then(jsonData => {
+//     console.log(jsonData);
+//   });
+// })
+// .catch(function(error) {
+//   console.log(error)
+// });
+
+// fetch('/get-ip-info')
+//   .then(res => res.json())
+//   .then(data => console.log('User Location Info:', data))
+//   .catch(err => console.error(err));
+
+
+const input = document.querySelector("#phone");
+const iti = window.intlTelInput(input, {
+  initialCountry: "auto",
+  separateDialCode	:true,
+  autoPlaceholder : 'aggressive',
+  strictMode: true,
+  excludeCountries : ["il"],
+  hiddenInput: (telInputName) => ({
+    phone: "phone_full",      // الاسم اللي هيتبعت في الفورم
+    country: "country_code"   // اختياري
+  }),
+  geoIpLookup: callback => {
+    fetch("/get-ip-info")
+      .then(res => res.json())
+      .then(data => {
+        console.log(data);  
+        callback(data.country_code);
+        
+        document.querySelector('input[name="ip_address"]').value = data.ip;
+
+      })
+      .catch(() => callback("eg"));
+  },
+  loadUtils: () => import("https://cdn.jsdelivr.net/npm/intl-tel-input@25.3.1/build/js/utils.js"),
+});
+
+document.querySelector('input[name="timezone"]').value = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+setTimeout(() => {
+
+const countryData = iti.getSelectedCountryData();
+// const countryData = window.intlTelInput.getCountryData();
+console.log(countryData);
+
+document.querySelector('input[name="CountryData"]').value = JSON.stringify(countryData);
+}, 1500); // انتظر 500 ملي ثانية بعد التهيئة
+
+</script>
 
 @endsection

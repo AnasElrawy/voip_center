@@ -25,7 +25,7 @@
           </p>
 
           {{-- Go to login --}}
-          <a href="{{ route('customer.login') }}" 
+          <a href="{{ route('customer.login.form') }}" 
              class="btn btn-primary w-100 py-2 fs-6 rounded-pill mb-3">
             Go to Login
           </a>

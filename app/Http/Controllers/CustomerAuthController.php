@@ -10,6 +10,8 @@ use App\Models\Customer;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+// use App\Mail\VerifyCustomerEmail;
 
 
 
@@ -20,14 +22,25 @@ class CustomerAuthController extends Controller
 {
     //
 
-    public function showRegisterForm()
+    public function showRegisterForm(Request $request)
     {
+
+        // dd($request->ip());
+        // dd($_SERVER['REMOTE_ADDR']);
+        // dd(file_get_contents('https://ipapi.co/8.8.8.8/json/'));
+        // echo file_get_contents('https://ipapi.co/8.8.8.8/json/');
+
         return view('auth.register');
     }
 
 
     public function register(Request $request)
     {
+        // $countryData = json_decode($request->CountryData, true);
+        // dd($countryData);
+
+        dd($request->all());
+        // dd($request);
         $request->validate([
             'email' => 'required|email|unique:customers,email',
             'username' => 'required|unique:customers,username|regex:/^[a-zA-Z0-9_\-\.@]+$/',
@@ -64,26 +77,34 @@ class CustomerAuthController extends Controller
     
             // 1. Store customer locally
             $customer = Customer::create([
+                'first_name' => $request->first_name,
+                'first_nlast_nameame' => $request->last_name,
                 'email' => $request->email,
                 'username' => $request->username,
-                'phone_number' => $request->phone,
-                'country_code' => $request->country_code,
+                'phone_number' => $request->phone_full,
+                'timezone' => $request->timezone,
                 'is_active' => false,
             ]);
     
             // 2. Store customer in API
-            $createCustomerApiResponse = Http::get('https://www.voipinfocenter.com/API/Request.ashx', [
+            $createCustomerApiResponse = Http::get(config('my_app_settings.voip.api_url'), [
                 'command' => 'createcustomer',
-                'username' => env('VOIP_RESELLER_USERNAME'),
-                'password' => env('VOIP_RESELLER_PASSWORD'),
+                'username' => config('my_app_settings.voip.username'),
+                'password' => config('my_app_settings.voip.password'),
                 'customer' => $request->username,
                 'customerpassword' => $request->customerpassword,
-                'geocallcli' => urlencode($request->phone),
+                'geocallcli' => $request->phone_full,
+                // 'tariffrate' => $request->phone,
+                // 'country' => $request->phone,
+                'timezone' => $request->timezone,
             ]);
     
             $xml = simplexml_load_string($createCustomerApiResponse->body());
 
-            if (!$xml || (string) $xml->Result !== 'Success') {
+            // dd($createCustomerApiResponse, $xml ,'$xml->Result :'.(string) $xml->Result ,'(!$xml || (string) $xml->Result !== Success) :'.(!$xml || (string) $xml->Result !== 'Success') ,'$request->phone :'.$request->phone,'urlencode($request->phone :'. urlencode($request->phone));
+
+            // if (!$xml || (string) $xml->Result !== 'Success') {
+            if (!$xml || !isset($xml->CustomerLoginName)) {
 
                 $customer->delete();
                 DB::rollBack();
@@ -95,10 +116,10 @@ class CustomerAuthController extends Controller
             
     
             // 3. Temporarily block the customer 
-            $changeuserinfoApiResponse = Http::get('https://www.voipinfocenter.com/API/Request.ashx', [
+            $changeuserinfoApiResponse = Http::get(config('my_app_settings.voip.api_url'), [
                 'command' => 'changeuserinfo',
-                'username' => env('VOIP_RESELLER_USERNAME'),
-                'password' => env('VOIP_RESELLER_PASSWORD'),
+                'username' => config('my_app_settings.voip.username'),
+                'password' => config('my_app_settings.voip.password'),
                 'customer' => $request->username,
                 'customerblocked' => 'true',
             ]);
@@ -152,19 +173,19 @@ class CustomerAuthController extends Controller
 
         // If the customer doesn't exist, redirect to registration with error
         if (!$customer) {
-            return redirect()->route('register')->withErrors(['msg' =>  'We couldn’t find your email address. Please register first.']);
+            return redirect()->route('customer.register.form')->withErrors(['msg' =>  'We couldn’t find your email address. Please register first.']);
         }
 
         // If the email is already verified and the account is active, redirect to login
         if ($customer->is_active && $customer->email_verified_at) {
-            return redirect()->route('login')->with('message', 'Your email is already verified. Please log in.');
+            return redirect()->route('customer.login.form')->with('info', 'Your email is already verified. Please log in.');
         }
 
         $emailVerification = EmailVerification::where('token', $token)->first();
 
         // If the token is invalid or doesn't match the email, show error
         if (!$emailVerification || $emailVerification->email !== $email) {
-            return redirect()->route('login')->withErrors(['msg' => 'Invalid or expired verification link.']);
+            return redirect()->route('customer.login.form')->withErrors(['msg' => 'Invalid or expired verification link.']);
         }
 
         // If the verification link has expired, redirect to resend page with message
@@ -189,23 +210,23 @@ class CustomerAuthController extends Controller
             
             // return redirect()->route('login')->withErrors(['msg' => 'The verification link has expired.']);
 
-            return redirect()->route('customer.verify.resend')->with('message', 'The verification link has expired. Please enter your email to receive a new one.');
+            return redirect()->route('customer.verify.resend')->with('error', 'The verification link has expired. Please enter your email to receive a new one.');
 
         }
 
         //// 2.Unblock the customer in the external VoIP system
         try {
 
-            $changeuserinfoApiResponse = Http::get('https://www.voipinfocenter.com/API/Request.ashx', [
+            $changeuserinfoApiResponse = Http::get(config('my_app_settings.voip.api_url'), [
                 'command' => 'changeuserinfo',
-                'username' => 'callsland',
-                'password' => 'trafficzone',
+                'username' => config('my_app_settings.voip.username'),
+                'password' => config('my_app_settings.voip.password'),
                 'customer' => $customer->username,  
                 'customerblocked' => 'false', 
             ]);
 
             if ($changeuserinfoApiResponse->failed()) {
-                return redirect()->route('login')->withErrors(['msg' => 'We couldn’t connect to the verification service. Please try again later.']);
+                return redirect()->route('customer.login.form')->withErrors(['msg' => 'We couldn’t connect to the verification service. Please try again later.']);
             }
             
             $responseXml = simplexml_load_string($changeuserinfoApiResponse->body());
@@ -215,16 +236,16 @@ class CustomerAuthController extends Controller
                 
                 // Custom messages based on the reason
                 if ($reason == 'Unknown customer') {
-                    return redirect()->route('login')->withErrors(['msg' => 'We couldn’t find your account. Please check the information you entered.']);
+                    return redirect()->route('customer.login.form')->withErrors(['msg' => 'We couldn’t find your account. Please check the information you entered.']);
                 }
                 
                 // If the request failed partially
-                return redirect()->route('login')->withErrors(['msg' => 'We couldn’t connect to the verification service. Please try again later.']);
+                return redirect()->route('customer.login.form')->withErrors(['msg' => 'We couldn’t connect to the verification service. Please try again later.']);
             }
 
 
         } catch (\Exception $e) {
-            return redirect()->route('login')->withErrors(['msg' =>'We couldn’t connect to the verification service. Please try again later.']);
+            return redirect()->route('customer.login.form')->withErrors(['msg' =>'We couldn’t connect to the verification service. Please try again later.']);
         }
 
         //// 3. Update the database: verify the customer's email and activate the account
@@ -242,11 +263,11 @@ class CustomerAuthController extends Controller
 
             DB::commit();  
 
-            return redirect()->route('login')->with('message', 'Your email has been successfully verified. You can now log in.');
+            return redirect()->route('customer.login.form')->with('success', 'Your email has been successfully verified. You can now log in.');
 
         } catch (\Exception $e) {
             DB::rollBack();  
-            return redirect()->route('login')->withErrors(['msg' => 'Something went wrong. Please try again later.']);
+            return redirect()->route('customer.login.form')->withErrors(['msg' => 'Something went wrong. Please try again later.']);
         }
     }
 
@@ -266,7 +287,7 @@ class CustomerAuthController extends Controller
 
         $customer = Customer::where('email', $request->email)->first();
         if ($customer && $customer->email_verified_at) {
-            return redirect()->route('customer.login')->with('message', 'Your email is already verified. You can login now.');
+            return redirect()->route('customer.login')->with('info', 'Your email is already verified. You can login now.');
         }
 
         do {
@@ -281,7 +302,7 @@ class CustomerAuthController extends Controller
             'expires_at' => Carbon::now()->addMinutes(30),
         ]);
 
-        Mail::to($request->email)->send(new VerifyCustomerEmail($token, $request->email));
+        Mail::to($request->email)->send(new \App\Mail\VerifyCustomerEmail($token, $request->email));
 
         // return redirect()->route('customer.login')->with('message', 'A new verification link has been sent to your email.');
         
@@ -295,31 +316,63 @@ class CustomerAuthController extends Controller
         return view('auth.login');
     }
 
+    
     public function login(Request $request)
     {
-        // التحقق من صحة المدخلات (البريد الإلكتروني وكلمة المرور)
         $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|min:8',
+            'username' => 'required|string',
+            'password' => 'required|string',
+        ]);
+    
+        // 1. ابحث عن المستخدم محلياً
+        $customer = Customer::where('username', $request->username)->first();
+    
+        if (! $customer) {
+            // return back()->withErrors(['msg' => 'No account found with that username.']);
+            return redirect()->route('customer.login.form')->with('error' , 'No account found with that username.');
+        }
+    
+        // 2. تحقق من تفعيل الحساب
+        if (! $customer->is_active || !$customer->email_verified_at) {
+            return back()->withErrors(['msg' => 'Your account is not activated yet. Please check your email.']);
+        }
+    
+        // 3. تحقق من صحة البيانات عبر API
+        $apiResponse = Http::get(config('my_app_settings.voip.api_url'), [
+            'command' => 'validateuser',
+            'username' => config('my_app_settings.voip.username'),
+            'password' => config('my_app_settings.voip.password'),
+            'customer' => $request->username,
+            'customerpassword' => $request->password,
         ]);
 
-        // محاولة تسجيل الدخول
-        if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
-            $user = Auth::user();
 
-            // التحقق إذا كان البريد الإلكتروني مفعلًا
-            if (!$user->email_verified_at) {
-                // إذا لم يكن مفعلًا، نوجهه إلى صفحة التنبيه مع رسالة
-                return redirect()->route('customer.verify.resend')->with('message', 'Your email is not verified. Please verify your email.');
-            }
-
-            // إذا كان مفعلًا، نسمح له بالدخول
-            return redirect()->route('customer.dashboard');
-        } else {
-            return redirect()->route('customer.login')->withErrors(['msg' => 'Invalid credentials.']);
-        }
+        // dd($apiResponse->body());
+    
+        // if (strtolower($apiResponse->body()) !== 'true') {
+        //     return back()->withErrors(['msg' => 'Incorrect username or password.']);
+        // }
+    
+        // 4. كل شيء تمام، سجل الدخول
+        Auth::guard('customer')->login($customer);
+        
+        // Auth::guard('customer')->check();      // هل العميل مسجل دخول؟
+        // Auth::guard('customer')->user();       // رجع بيانات العميل
+        // Auth::guard('customer')->logout();     // تسجيل خروج العميل
+        dd(Auth::guard('customer')->check() );
+        return redirect()->route('customer.dashboard')->with('success', 'Welcome back!');
     }
 
+    
+    public function logout(Request $request)
+    {
+        Auth::guard('customer')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('customer.login.form');
+    }
+    
 
 
 

@@ -2,7 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CustomerAuthController;
-
+use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Request;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,10 +37,21 @@ Route::prefix('customer')->group(function () {
     Route::get('verify-resend', [CustomerAuthController::class, 'showResendForm'])->name('customer.verify.resend.form');
     Route::post('verify-resend', [CustomerAuthController::class, 'resendVerificationEmail'])->name('customer.verify.resend');
 
-    Route::get('login', [CustomerAuthController::class, 'showLoginForm']) ->name('customer.login');
+    Route::get('login', [CustomerAuthController::class, 'showLoginForm']) ->name('customer.login.form');
     Route::post('login', [CustomerAuthController::class, 'login'])->name('customer.login.submit');
     
     Route::post('logout', [CustomerAuthController::class, 'logout']) ->name('customer.logout');
     
+});
+
+
+Route::get('/get-ip-info', function (Request $request) {
+    $ip = $request->ip(); 
+    $key = config('my_app_settings.ipstack.access_key');
+    
+    $url = "http://api.ipstack.com/{$ip}?access_key={$key}";
+    $response = Http::get($url);
+
+    return $response->json();
 });
 
