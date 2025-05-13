@@ -49,8 +49,13 @@
                     </form>
 
                     <div class="mt-3 text-center">
-                        <a href="{{ route('customer.register') }}" class="small">Don't have an account? Create one</a>
+                        <a href="{{ route('customer.forgotPassword.form') }}" class="small">Forgot Password?</a>
                     </div>
+                    
+                    <div class="mt-3 text-center">
+                        <a href="{{ route('customer.register.form') }}" class="small">Don't have an account? Create one</a>
+                    </div>
+
 
                 </div>
             </div>

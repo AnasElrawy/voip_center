@@ -108,7 +108,7 @@
 
             {{-- ip_address --}}
 
-            <input type="hidden" name="ip_address" />
+            <input type="hidden" name="ip_address"  id="ip_address"/>
 
 
             {{-- Submit --}}
@@ -128,59 +128,6 @@
 </style>
 <script type="module">
 
-
-
-// const options = {
-//   method: 'GET',
-//   url: 'https://api.ipstack.com/check?access_key=acbd972255e8ed03166d3392b7084189',
-// };
-
-// try {
-// 	const response = await axios.request(options);
-// 	console.log(response.data);
-// } catch (error) {
-// 	console.error(error);
-// }
-
-// const url = 'https://api.ipstack.com/check?access_key={acbd972255e8ed03166d3392b7084189}';
-// const options = {
-// 	method: 'GET'
-// };
-
-// try {
-// 	const response = await fetch(url, options);
-// 	const result = await response.text();
-// 	console.log(result);
-// } catch (error) {
-// 	console.error(error);
-// }
-
-// fetch('https://api.ipstack.com/check?access_key=acbd972255e8ed03166d3392b7084189')
-// .then(function(response) {
-//   response.json().then(jsonData => {
-//     console.log(jsonData);
-//   });
-// })
-// .catch(function(error) {
-//   console.log(error)
-// });
-
-// fetch('https://ipapi.co/8.8.8.8/json/')
-// .then(function(response) {
-//   response.json().then(jsonData => {
-//     console.log(jsonData);
-//   });
-// })
-// .catch(function(error) {
-//   console.log(error)
-// });
-
-// fetch('/get-ip-info')
-//   .then(res => res.json())
-//   .then(data => console.log('User Location Info:', data))
-//   .catch(err => console.error(err));
-
-
 const input = document.querySelector("#phone");
 const iti = window.intlTelInput(input, {
   initialCountry: "auto",
@@ -196,10 +143,11 @@ const iti = window.intlTelInput(input, {
     fetch("/get-ip-info")
       .then(res => res.json())
       .then(data => {
-        console.log(data);  
-        callback(data.country_code);
-        
+        // console.log(data);  
         document.querySelector('input[name="ip_address"]').value = data.ip;
+        
+        callback(data.country_code);
+        updateCountryData();        
 
       })
       .catch(() => callback("eg"));
@@ -209,15 +157,17 @@ const iti = window.intlTelInput(input, {
 
 document.querySelector('input[name="timezone"]').value = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-setTimeout(() => {
 
-const countryData = iti.getSelectedCountryData();
-// const countryData = window.intlTelInput.getCountryData();
-console.log(countryData);
+input.addEventListener("countrychange", () => {
+  
+  updateCountryData();
+});
 
-document.querySelector('input[name="CountryData"]').value = JSON.stringify(countryData);
-}, 1500); // انتظر 500 ملي ثانية بعد التهيئة
-
+function updateCountryData() {
+  const countryData = iti.getSelectedCountryData();
+  console.log("Country Changed:", countryData);
+  document.querySelector('input[name="CountryData"]').value = JSON.stringify(countryData);
+}
 </script>
 
 @endsection

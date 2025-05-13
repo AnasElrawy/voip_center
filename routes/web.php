@@ -40,13 +40,28 @@ Route::prefix('customer')->group(function () {
     Route::get('login', [CustomerAuthController::class, 'showLoginForm']) ->name('customer.login.form');
     Route::post('login', [CustomerAuthController::class, 'login'])->name('customer.login.submit');
     
-    Route::post('logout', [CustomerAuthController::class, 'logout']) ->name('customer.logout');
+    ///////////set in medell ware auth  })->middleware(['auth', 'verified']);
+    // Route::post('logout', [CustomerAuthController::class, 'logout']) ->name('customer.logout');
+    Route::get('logout', [CustomerAuthController::class, 'logout']) ->name('customer.logout');
+    ///////////////  
     
+    Route::get('forgot-password', [CustomerAuthController::class, 'showForgotPasswordForm'])->name('customer.forgotPassword.form');
+    Route::post('forgot-password', [CustomerAuthController::class, 'sendForgotPasswordEmail'])->name('customer.forgotPassword.send');
+   
+    Route::get('reset-password', [CustomerAuthController::class, 'showResetPasswordForm'])->name('customer.resetPassword.form');
+    Route::post('reset-password', [CustomerAuthController::class, 'resetPassword'])->name('customer.resetPassword');
+
+    // Route::post('forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('customer.forgotPassword.email');
+
 });
 
 
 Route::get('/get-ip-info', function (Request $request) {
-    $ip = $request->ip(); 
+    // $ip = $request->ip(); 
+    $ip = $request->header('CF-Connecting-IP') ??
+    $request->header('X-Forwarded-For') ??
+    $request->ip();
+
     $key = config('my_app_settings.ipstack.access_key');
     
     $url = "http://api.ipstack.com/{$ip}?access_key={$key}";
@@ -55,3 +70,11 @@ Route::get('/get-ip-info', function (Request $request) {
     return $response->json();
 });
 
+// Route::get('/my-ip', function (\Illuminate\Http\Request $request) {
+//     return response()->json([
+//         'ip_from_request_ip' => $request->ip(),
+//         'forwarded_for' => $request->header('X-Forwarded-For'),
+//         'cf_ip' => $request->header('CF-Connecting-IP'),
+//         'remote_addr' => $_SERVER['REMOTE_ADDR'],
+//     ]);
+// });
