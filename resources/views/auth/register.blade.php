@@ -71,8 +71,8 @@
             <div class="mb-2">
               <label class="form-label">Phone Number</label>
               <input type="text" id="phone" name="phone" value="{{ old('phone') }}"
-                     class="form-control @error('phone') is-invalid @enderror" placeholder="Phone number" required>
-              @error('phone')
+                     class="form-control @error('phone_full') is-invalid @enderror" placeholder="Phone number" required>
+              @error('phone_full')
                 <div class="invalid-feedback d-block">{{ $message }}</div>
               @enderror
               <div class="form-text">Enter in international format, e.g. +441234567890</div>
@@ -136,8 +136,8 @@ const iti = window.intlTelInput(input, {
   strictMode: true,
   excludeCountries : ["il"],
   hiddenInput: (telInputName) => ({
-    phone: "phone_full",      // الاسم اللي هيتبعت في الفورم
-    country: "country_code"   // اختياري
+    phone: "phone_full",
+    country: "country_code"   
   }),
   geoIpLookup: callback => {
     fetch("/get-ip-info")

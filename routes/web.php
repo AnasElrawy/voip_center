@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CustomerAuthController;
+use App\Http\Controllers\CustomerController;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 
@@ -16,8 +17,12 @@ use Illuminate\Http\Request;
 |
 */
 
+// Route::get('/', function () {
+//     return view('welcome');
+// });
+
 Route::get('/', function () {
-    return view('welcome');
+    return view('auth.login');
 });
 
 
@@ -41,8 +46,7 @@ Route::prefix('customer')->group(function () {
     Route::post('login', [CustomerAuthController::class, 'login'])->name('customer.login.submit');
     
     ///////////set in medell ware auth  })->middleware(['auth', 'verified']);
-    // Route::post('logout', [CustomerAuthController::class, 'logout']) ->name('customer.logout');
-    Route::get('logout', [CustomerAuthController::class, 'logout']) ->name('customer.logout');
+    // Route::get('logout', [CustomerAuthController::class, 'logout']) ->name('customer.logout');
     ///////////////  
     
     Route::get('forgot-password', [CustomerAuthController::class, 'showForgotPasswordForm'])->name('customer.forgotPassword.form');
@@ -78,3 +82,14 @@ Route::get('/get-ip-info', function (Request $request) {
 //         'remote_addr' => $_SERVER['REMOTE_ADDR'],
 //     ]);
 // });
+
+
+Route::middleware(['auth:customer'])->group(function () {
+    Route::get('/dashboard', [CustomerController::class, 'dashboard'])->name('customer.dashboard');
+
+    Route::post('logout', [CustomerAuthController::class, 'logout']) ->name('logout');
+
+});
+
+
+

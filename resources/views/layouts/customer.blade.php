@@ -16,6 +16,10 @@
   <!-- for axios -->
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
+  <!-- Bootstrap Icon -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+
 </head>
 <body class="bg-light">
 
@@ -40,7 +44,7 @@
               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileMenu">
                 <li><a class="dropdown-item" href="">Profile</a></li>
                 <li>
-                  <form method="POST" action="">
+                  <form method="POST" action="{{ route ('logout')}}">
                     @csrf
                     <button class="dropdown-item">Logout</button>
                   </form>
@@ -55,6 +59,7 @@
       </div>
     </div>
   </nav>
+
 
 @php
   $alertTypes = ['success' => 'success', 'error' => 'danger', 'info' => 'info', 'warning' => 'warning'];

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use App\Models\EmailVerification;
+use App\Models\LoginLog;
 // use App\Models\EmailVerification;
 use App\Models\Customer;
 use Carbon\Carbon;
@@ -13,7 +14,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 // use App\Mail\VerifyCustomerEmail;
-
+use Illuminate\Support\Facades\Crypt;
+use App\Http\Requests\StoreCustomerRequest;
 
 
 
@@ -35,59 +37,9 @@ class CustomerAuthController extends Controller
     }
 
 
-    public function register(Request $request)
+    public function register(StoreCustomerRequest  $request)
     {
-        $request->validate([
-            'email' => 'required|email|unique:customers,email',
-            'username' => 'required|unique:customers,username|regex:/^[a-zA-Z0-9_\-\.@]+$/',
-            'phone_full' => [
-                'required',
-                'regex:/^\+?[1-9][0-9]{6,15}$/',
-                'unique:customers,phone_number', // الرقم بالكامل لا يتكرر
-                function ($attribute, $value, $fail) {
-                    if (preg_match('/(.)\1{5,}/', $value)) {
-                        $fail("The phone number must not contain repeated digits.");
-                    }
-                }
-            ],
-            'customerpassword' => [
-                'required',
-                'string',
-                'min:4',
-                'max:39',
-                'regex:/^[a-zA-Z0-9_\-@.]+$/',
-                function ($attribute, $value, $fail) {
-                    $lower = strtolower($value);
-
-                    if (preg_match('/(.)\1{3,}/', $lower)) {
-                        return $fail("The $attribute must not contain repeated characters.");
-                    }
-
-                    $sequence = 'abcdefghijklmnopqrstuvwxyz0123456789';
-                    for ($i = 0; $i <= strlen($sequence) - 4; $i++) {
-                        if (strpos($lower, substr($sequence, $i, 4)) !== false) {
-                            $fail("The $attribute must not contain sequential characters.");
-                            break;
-                        }
-                    }
-                    
-
-                    // $sequences = ['abcdefghijklmnopqrstuvwxyz', '0123456789'];
-                    // foreach ($sequences as $seq) {
-                    //     for ($i = 0; $i <= strlen($seq) - 4; $i++) {
-                    //         if (strpos($lower, substr($seq, $i, 4)) !== false) {
-                    //             return $fail("The $attribute must not contain sequential characters.");
-                    //         }
-                    //     }
-                    // }
-                }
-            ],
-
-            'country_code' => 'nullable|string|size:2',
-            'timezone' => 'nullable|string|max:50',
-            'ip_address' => 'nullable|ip',
-        ]);
-    
+        
         try {
             DB::beginTransaction();
     
@@ -112,12 +64,43 @@ class CustomerAuthController extends Controller
                 'password' => config('my_app_settings.voip.password'),
                 'customer' => $request->username,
                 'customerpassword' => $request->customerpassword,
-                'geocallcli' => $request->phone_full,
+                // 'geocallcli' => $request->phone_full,
                 // 'tariffrate' => $request->phone,
                 'country' => $dialCode,
                 'timezone' => $request->timezone,
-            ]);
-    
+            ],
+            $messages = [
+
+            // Email
+            'email.required' => 'Email is required.',
+            'email.email' => 'Please enter a valid email address.',
+            'email.unique' => 'This email is already registered.',
+
+            // Username
+            'username.required' => 'Username is required.',
+            'username.unique' => 'This username is already taken.',
+            'username.regex' => 'Username can only contain letters, numbers, dashes, underscores, dots, and @ symbol.',
+
+            // Phone (phone_full)
+            'phone_full.required' => 'Phone number is required.',
+            'phone_full.regex' => 'Please enter a valid international phone number (e.g., +441234567890).',
+            'phone_full.unique' => 'This phone number is already in use.',
+
+            // Password
+            'customerpassword.required' => 'Password is required.',
+            'customerpassword.string' => 'Password must be a valid string.',
+            'customerpassword.min' => 'Password must be at least 4 characters.',
+            'customerpassword.max' => 'Password cannot exceed 39 characters.',
+            'customerpassword.regex' => 'Password can only contain letters, numbers, dashes, underscores, dots, and @ symbol.',
+
+            // Optional fields
+            'country_code.size' => 'Country code must be exactly 2 characters.',
+            'timezone.max' => 'Timezone must not exceed 50 characters.',
+            'ip_address.ip' => 'Please enter a valid IP address.',
+
+        ]
+        );
+
             $xml = simplexml_load_string($createCustomerApiResponse->body());
 
             // dd($createCustomerApiResponse, $xml ,'$xml->Result :'.(string) $xml->Result ,'(!$xml || (string) $xml->Result !== Success) :'.(!$xml || (string) $xml->Result !== 'Success') ,'$request->phone :'.$request->phone,'urlencode($request->phone :'. urlencode($request->phone));
@@ -128,9 +111,9 @@ class CustomerAuthController extends Controller
                 $customer->delete();
                 DB::rollBack();
             
-                return back()->withErrors([
-                    'username' => 'This username might already be taken on our provider. Please choose another one.',
-                ])->withInput();
+                return back()->with(
+                    'error' , 'This username might already be taken on our provider. Please choose another one.',
+                );
             }
             
     
@@ -168,9 +151,9 @@ class CustomerAuthController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
     
-            return back()->withErrors([
-                'msg' => 'An error occurred during registration: ' . $e->getMessage(),
-            ])->withInput();
+            return back()->with(
+                'error', 'An error occurred during registration: ' . $e->getMessage(),
+            );
         }
     }
     
@@ -348,7 +331,8 @@ class CustomerAuthController extends Controller
     
         if (! $customer) {
             // return back()->withErrors(['msg' => 'No account found with that username.']);
-            return redirect()->route('customer.login.form')->with('error' , 'No account found with that username.');
+            return redirect()->route('customer.login.form')->with('error' , 'Incorrect username or password.');
+            // return redirect()->route('customer.login.form')->with('error' , 'No account found with that username.');
         }
     
         // 2. تحقق من تفعيل الحساب
@@ -365,6 +349,101 @@ class CustomerAuthController extends Controller
             'customerpassword' => $request->password,
         ]);
 
+        
+        if ($apiResponse->failed()) {
+            return redirect()->route('customer.login.form')->with('error' ,'Something is wrong. Please try again later.');
+        }
+        
+        $ip = $request->header('CF-Connecting-IP') ??
+        $request->header('X-Forwarded-For') ??
+        $request->ip();
+
+        $xml = simplexml_load_string($apiResponse);
+
+// dd($xml);
+        if ($xml && $xml->Result == 'Success') {
+
+            // Store password in session
+            $customerPassword = $request->input('password');  
+            session(['customer_password' => Crypt::encryptString($customerPassword)]);
+
+            // Get Blocked status
+            $userName = $customer->username;
+            $getInfoResponse = Http::get(config('my_app_settings.voip.api_url'), [
+                'command' => 'getuserinfo',
+                'username' => config('my_app_settings.voip.username'),
+                'password' => config('my_app_settings.voip.password'),
+                'customer' => $userName,
+                'customerpassword' => $customerPassword,
+            ]);
+
+            $status = 'unknown'; // fallback
+            $isBlocked = false;
+
+
+            if ($getInfoResponse->ok()) {
+                $userInfoXML = simplexml_load_string($getInfoResponse->body());
+                $isBlocked = strtolower((string) $userInfoXML->Blocked) === 'true';
+                $status = $isBlocked ? 'blocked' : 'active';
+
+
+                // dd($status);
+            }
+
+//             dd([
+//     'BlockedFromXML' => (string) $userInfoXML->Blocked,
+//     'EvaluatedIsBlocked' => $isBlocked,
+//     'FinalStatus' => $status,
+// ]);
+
+
+            // سجل اللوج بغض النظر
+            LoginLog::create([
+                'user_id' => $customer->id,
+                'username' => $customer->username,
+                'ip_address' => $ip,
+                'login_time' => now(),
+                'status' => $status,
+            ]);
+
+            // لو معمول له بلوك، امنعه من الدخول
+            if ($isBlocked) {
+                return redirect()->route('customer.login.form')->with('error', 'Your account is blocked. Please contact support.');
+            }
+
+            // سجل الدخول
+            Auth::guard('customer')->login($customer);
+
+            return redirect()->route('customer.dashboard')->with('success', 'Welcome back!');
+        }
+
+            return back()->with('error','Incorrect username or password.');
+
+
+
+        // if ($xml && $xml->Result == 'Success') {
+
+        //     // store the password in session 
+        //     $customerPassword = $request->input('password');  
+        //     session(['customer_password' => Crypt::encryptString($customerPassword)]);
+
+
+        //     Auth::guard('customer')->login($customer);
+
+        //     LoginLog::create([
+        //         'user_id' => Auth::guard('customer')->id(),
+        //         'username' => Auth::guard('customer')->user()->username,
+        //         'ip_address' => $ip,
+        //         'login_time' => now(),
+        //     ]);
+
+        //     return redirect()->route('customer.dashboard')->with('success', 'Welcome back!');
+        // } else {
+        //     // return redirect()->route('customer.forgotPassword.form')
+        //     //                 ->withErrors(['email' => 'There was an error resetting your password. Please try again.']);
+        //     return back()->with('error','Incorrect username or password.');
+        // }
+
 
         // dd($apiResponse->body());
     
@@ -379,7 +458,7 @@ class CustomerAuthController extends Controller
         // $request->session()->regenerateToken();
 
         // 4. كل شيء تمام، سجل الدخول
-        Auth::guard('customer')->login($customer);
+        // Auth::guard('customer')->login($customer);
 
         // Auth::guard('customer')->login($customer);
         
@@ -387,8 +466,8 @@ class CustomerAuthController extends Controller
         // Auth::guard('customer')->user();       // رجع بيانات العميل
         // Auth::guard('customer')->logout();     // تسجيل خروج العميل
 
-        dd(Auth::guard('customer')->check());
-        return redirect()->route('customer.dashboard')->with('success', 'Welcome back!');
+        // dd(Auth::guard('customer')->check());
+        // return redirect()->route('customer.dashboard')->with('success', 'Welcome back!');
     }
 
     
