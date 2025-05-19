@@ -360,7 +360,6 @@ class CustomerAuthController extends Controller
 
         $xml = simplexml_load_string($apiResponse);
 
-// dd($xml);
         if ($xml && $xml->Result == 'Success') {
 
             // Store password in session
@@ -385,17 +384,21 @@ class CustomerAuthController extends Controller
                 $userInfoXML = simplexml_load_string($getInfoResponse->body());
                 $isBlocked = strtolower((string) $userInfoXML->Blocked) === 'true';
                 $status = $isBlocked ? 'blocked' : 'active';
-
-
-                // dd($status);
             }
 
-//             dd([
-//     'BlockedFromXML' => (string) $userInfoXML->Blocked,
-//     'EvaluatedIsBlocked' => $isBlocked,
-//     'FinalStatus' => $status,
-// ]);
+            try {
 
+                $key = config('my_app_settings.ipstack.access_key');
+                $url = "http://api.ipstack.com/{$ip}?access_key={$key}";
+
+                $geoResponse = Http::get($url);
+                if ($geoResponse->ok()) {
+                    $data = $geoResponse->json();
+                    $country = $data['country_name'] ?? 'Unknown';
+                }
+            } catch (\Exception $e) {
+                $country = 'Unknown';
+            }
 
             // سجل اللوج بغض النظر
             LoginLog::create([
@@ -404,6 +407,7 @@ class CustomerAuthController extends Controller
                 'ip_address' => $ip,
                 'login_time' => now(),
                 'status' => $status,
+                'country' => $country,
             ]);
 
             // لو معمول له بلوك، امنعه من الدخول
@@ -417,57 +421,8 @@ class CustomerAuthController extends Controller
             return redirect()->route('customer.dashboard')->with('success', 'Welcome back!');
         }
 
-            return back()->with('error','Incorrect username or password.');
-
-
-
-        // if ($xml && $xml->Result == 'Success') {
-
-        //     // store the password in session 
-        //     $customerPassword = $request->input('password');  
-        //     session(['customer_password' => Crypt::encryptString($customerPassword)]);
-
-
-        //     Auth::guard('customer')->login($customer);
-
-        //     LoginLog::create([
-        //         'user_id' => Auth::guard('customer')->id(),
-        //         'username' => Auth::guard('customer')->user()->username,
-        //         'ip_address' => $ip,
-        //         'login_time' => now(),
-        //     ]);
-
-        //     return redirect()->route('customer.dashboard')->with('success', 'Welcome back!');
-        // } else {
-        //     // return redirect()->route('customer.forgotPassword.form')
-        //     //                 ->withErrors(['email' => 'There was an error resetting your password. Please try again.']);
-        //     return back()->with('error','Incorrect username or password.');
-        // }
-
-
-        // dd($apiResponse->body());
-    
-        // if (strtolower($apiResponse->body()) !== 'true') {
-        //     return back()->withErrors(['msg' => 'Incorrect username or password.']);
-        // }
-    
-        // DB::table('sessions')->delete();  // يحذف جميع الجلسات للمستخدمين
-
-        // Auth::guard('customer')->logout();
-        // $request->session()->invalidate();
-        // $request->session()->regenerateToken();
-
-        // 4. كل شيء تمام، سجل الدخول
-        // Auth::guard('customer')->login($customer);
-
-        // Auth::guard('customer')->login($customer);
+        return back()->with('error','Incorrect username or password.');
         
-        // Auth::guard('customer')->check();      // هل العميل مسجل دخول؟
-        // Auth::guard('customer')->user();       // رجع بيانات العميل
-        // Auth::guard('customer')->logout();     // تسجيل خروج العميل
-
-        // dd(Auth::guard('customer')->check());
-        // return redirect()->route('customer.dashboard')->with('success', 'Welcome back!');
     }
 
     
