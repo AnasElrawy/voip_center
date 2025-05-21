@@ -87,6 +87,9 @@ Route::get('/get-ip-info', function (Request $request) {
 Route::middleware(['auth:customer'])->group(function () {
     Route::get('/dashboard', [CustomerController::class, 'dashboard'])->name('customer.dashboard');
 
+    Route::get('/call-history', [CustomerController::class, 'callHistory'])->name('customer.call.history');
+
+
     Route::post('logout', [CustomerAuthController::class, 'logout']) ->name('logout');
 
 });

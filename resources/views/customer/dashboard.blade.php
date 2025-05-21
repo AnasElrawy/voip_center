@@ -111,8 +111,8 @@
             <div class="dashboard-card-header">
                 <i class="icon-success bi bi-wallet2"></i> Balance Overview
             </div>
-            <p><strong>Total Balance:</strong> ${{ number_format($balance['total'], 2) }}</p>
-            <p><strong>Specific Balance:</strong> ${{ number_format($balance['specific'], 2) }}</p>
+            <p><strong>Total Balance:</strong> € {{ number_format($balance['total'], 2) }}</p>
+            <p><strong>Specific Balance:</strong> € {{ number_format($balance['specific'], 2) }}</p>
         </div>
 
         <!-- App Access Info -->
@@ -165,7 +165,7 @@
                                     <td>{{ \Carbon\Carbon::parse($call['datetime'])->format('Y-m-d H:i') }}</td>
                                     <td>{{ $call['number'] }}</td>
                                     <td>{{ $call['duration'] }} mins</td>
-                                    <td>${{ number_format($call['cost'], 2) }}</td>
+                                    <td>€ {{ number_format($call['cost'], 2) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

@@ -33,9 +33,9 @@
       <div class="collapse navbar-collapse" id="navMenu">
         <ul class="navbar-nav ms-auto">
           @auth
-            <li class="nav-item"><a class="nav-link" href="">Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ route('customer.dashboard') }}">Dashboard</a></li>
             <li class="nav-item"><a class="nav-link" href="">Recharge</a></li>
-            <li class="nav-item"><a class="nav-link" href="">Call History</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ route('customer.call.history') }}">Call History</a></li>
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" id="profileMenu" data-bs-toggle="dropdown">
                 {{ Auth::user()->username }}
@@ -86,7 +86,7 @@
     <div class="container">
       <small>&copy; {{ date('Y') }} MyVoIP. All rights reserved.</small>
       <br>
-      <small>V {{ env('VERSION') }}</small>
+      <small>V {{ config('my_app_settings.version') }}</small>
     </div>
   </footer>
 

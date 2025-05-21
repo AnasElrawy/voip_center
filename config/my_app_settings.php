@@ -12,5 +12,7 @@ return [
         'access_key' => env ('IPSTACK_ACCESS_KEY'),
         'base_url' => env('IPSTACK_API_URL')
     ],
+
+    'version' => env ('VERSION'),
     
 ];

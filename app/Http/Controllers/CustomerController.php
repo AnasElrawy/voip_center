@@ -6,234 +6,184 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
+
 
 
 
 
 class CustomerController extends Controller
 {
-    //
+        
+    public function dashboard()
+    {
+        try {
 
-    // public function dashboard()
-    // {
+            if (!session()->has('customer_password')) {
+                Auth::guard('customer')->logout();
+                return redirect()->route('customer.login.form')
+                    ->with('error', 'Please log in to access your dashboard.');
+            }
 
-    //     try {
-    //         if (!session()->has('customer_password')) {
-    //             throw new \Exception('Password not found in session.');
-    //         }
-
-    //         $password = Crypt::decryptString(session('customer_password'));
-
-    //         // باقي الداشبورد مع بيانات المستخدم، وأنت تقدر تستخدم $password متى ما احتجته
-
-    //         return view('customer.dashboard', compact('password'));
-    //     } catch (\Exception $e) {
-    //         // إذا حصل خطأ في فك التشفير أو السيشن مفقودة
-    //         Auth::guard('customer')->logout();
-    //         session()->forget('customer_password');
-    //         return redirect()->route('customer.login.form')
-    //             ->with('error', 'Session expired or invalid, please log in again.');
-    //     }
-
-    //     $userName = Auth::guard('customer')->user()->username;
-    //     $apiResponse = Http::get(config('my_app_settings.voip.api_url'), [
-    //         'command' => 'getuserinfo',
-    //         'username' => config('my_app_settings.voip.username'),
-    //         'password' => config('my_app_settings.voip.password'),
-    //         'customer' => $userName,
-    //         'customerpassword' => $password,
-    //     ]);
-
-    //     $xml = simplexml_load_string($apiResponse->body());
+            $password = Crypt::decryptString(session('customer_password'));
 
 
-    //     $data = [
-    //         'customer'         => (string) $xml->Customer,
-    //         'balance'          => (float) $xml->Balance,
-    //         'specific_balance' => (float) $xml->SpecificBalance,
-    //         'blocked'          => (string) $xml->Blocked === 'True',
-    //         'email'            => (string) $xml->EmailAddress,
-    //         'phone'            => (string) $xml->GeocallCLI,
-    //     ];
+            $Userr = Auth::guard('customer')->user();
 
-    //     $balance = [
-    //         'total' => (float) $xml->Balance,
-    //         'specific' => $xml->SpecificBalance,
-    //     ];
+            $firstName = $Userr->first_name;
+            $lastName = $Userr->last_name;
+
+
+
+            $userName = Auth::guard('customer')->user()->username;
+
+
+            $apiResponse = Http::get(config('my_app_settings.voip.api_url'), [
+                'command' => 'getuserinfo',
+                'username' => config('my_app_settings.voip.username'),
+                'password' => config('my_app_settings.voip.password'),
+                'customer' => $userName,
+                'customerpassword' => $password,
+            ]);
+
+
+
+            if (!$apiResponse->ok()) {
+                throw new \Exception('Failed to retrieve user info from API.');
+            }
+
+            $xml = simplexml_load_string($apiResponse->body());
+
+            // if (!$xml || empty($xml->Customer)) {
+            //     throw new \Exception('Invalid XML response.');
+            // }
+
             
 
-    //     // Fake customer data
-    //     // $user = (object)[
-    //     //     'username' => 'jane_doe92',
-    //     //     'email' => 'jane.doe92@example.com',
-    //     //     'phone_number' => '+201234567890',
-    //     //     'timezone' => 'Africa/Cairo',
-    //     // ];
-
-    //     // Fake balance data
-    //     // $balance = [
-    //     //     'total' => 250.75,
-    //     //     'specific' => 100.00,
-    //     // ];
-
-    //     // Fake call history (last 5 calls)
-    //     $recentCalls = [
-    //         [
-    //             'datetime' => '2025-05-14 14:32',
-    //             'number' => '+201112223334',
-    //             'duration' => '3m 45s',
-    //             'cost' => 1.50,
-    //         ],
-    //         [
-    //             'datetime' => '2025-05-14 09:15',
-    //             'number' => '+201556677889',
-    //             'duration' => '2m 10s',
-    //             'cost' => 0.90,
-    //         ],
-    //         [
-    //             'datetime' => '2025-05-13 18:50',
-    //             'number' => '+201998877665',
-    //             'duration' => '5m 00s',
-    //             'cost' => 2.00,
-    //         ],
-    //         [
-    //             'datetime' => '2025-05-13 12:05',
-    //             'number' => '+201223344556',
-    //             'duration' => '1m 30s',
-    //             'cost' => 0.60,
-    //         ],
-    //         [
-    //             'datetime' => '2025-05-12 20:40',
-    //             'number' => '+201334455667',
-    //             'duration' => '4m 20s',
-    //             'cost' => 1.80,
-    //         ],
-    //     ];
+            $user = [
+                'username' => (string) $xml->Customer,
+                'email' =>  $Userr->email,
+                'phone_number' => $Userr->phone_number,
+                'timezone' => $Userr->timezone,
+            ];
 
 
-    //             return view('customer.dashboard', compact('user', 'balance', 'recentCalls'));
+            $balance = [
+                'total' => (float) $xml->Balance,
+                'specific' => (float) $xml->SpecificBalance,
+            ];
 
-    //     // return view('customer.dashboard', compact('balance', 'specificBalance', 'recentCalls'));
 
-    //     // return view('customer.dashboard');
-    // }
-public function dashboard()
-{
-    try {
+            $callApiResponse = Http::get(config('my_app_settings.voip.api_url'), [
+                'command' => 'calloverview',
+                'username' => config('my_app_settings.voip.username'),
+                'password' => config('my_app_settings.voip.password'),
+                'customer' => $userName,
+                'customerpassword' => $password,
+                'recordcount' => 5,
+            ]);
 
-        if (!session()->has('customer_password')) {
-            // كأنه لسه ما دخلش تسجيل دخول صح
+            $recentCalls = [];
+
+
+            if ($callApiResponse->ok()) {
+               
+                $callsXml = simplexml_load_string($callApiResponse->body());
+                
+                if (!empty($callsXml->Calls) && isset($callsXml->Calls->Call)) {
+                    foreach ($callsXml->Calls->Call as $call) {
+                        $recentCalls[] = [
+                            'datetime' => trim((string) $call['StartTime']),
+                            'number' => (string) $call['Destination'],
+                            'duration' => (string) $call['Duration'],
+                            'cost' => (float) $call['Charge'],
+                        ];
+                    }
+                }
+            }
+
+            return view('customer.dashboard', compact('user', 'balance', 'recentCalls' ,'password'));
+
+        } catch (\Exception $e) {
             Auth::guard('customer')->logout();
+            session()->forget('customer_password');
             return redirect()->route('customer.login.form')
-                ->with('error', 'Please log in to access your dashboard.');
+                ->with('error', 'We couldn’t load your dashboard. Please log in again to continue.');
+                // ->with('error', 'Session expired or invalid, please log in again.');
         }
+    }
 
-        // فك تشفير الباسورد
+
+    public function callHistory(Request $request)
+    {
+        $userName = Auth::guard('customer')->user()->username;
         $password = Crypt::decryptString(session('customer_password'));
 
-        // dd('is decrypyed');
+        $date = $request->filled('date')
+        ? Carbon::parse($request->date)->format('Y-m-d H:i:s')
+        : now()->format('Y-m-d H:i:s');
 
-        $Userr = Auth::guard('customer')->user();
-
-        $firstName = $Userr->first_name;
-        $lastName = $Userr->last_name;
-
-
-        // dd($user);
-
-        // اسم المستخدم من السيشن
-        $userName = Auth::guard('customer')->user()->username;
-
-        // dd($userName);
-
-        // طلب بيانات المستخدم من API
-        $apiResponse = Http::get(config('my_app_settings.voip.api_url'), [
-            'command' => 'getuserinfo',
+        $queryParams = [
+            'command' => 'calloverview',
             'username' => config('my_app_settings.voip.username'),
             'password' => config('my_app_settings.voip.password'),
             'customer' => $userName,
             'customerpassword' => $password,
+            'date' => $date ,
+            'callid' => $request->callid ?? 0,
+            'recordcount' => $request->recordcount ?? 10,
+            'direction' => $request->direction ?? 'backward',
+        ];
+
+        $response = Http::get(config('my_app_settings.voip.api_url'), $queryParams);
+
+        $calls = [];
+
+        // if ($response->ok()) {
+        //     $xml = simplexml_load_string($response->body());
+
+        //     if (!empty($xml->Calls) && isset($xml->Calls->Call)) {
+        //         $calls = collect($xml->Calls->Call)->map(function ($call) {
+        //             return [
+        //                 'start_time' => (string) $call['StartTime'],
+        //                 'duration' => (string) $call['Duration'],
+        //                 'destination' => (string) $call['Destination'],
+        //                 'charge' => (string) $call['Charge'],
+        //                 'callid' => (string) $call['CallID'],
+        //             ];
+        //         });
+        //     }
+        // }
+
+        if ($response->ok()) {
+      
+            $callsXml = simplexml_load_string($response->body());
+            
+            if (!empty($callsXml->Calls) && isset($callsXml->Calls->Call)) {
+                foreach ($callsXml->Calls->Call as $call) {
+                    $calls[] = [
+                        'start_time' => (string) $call['StartTime'],
+                        'duration' => (string) $call['Duration'],
+                        'destination' => (string) $call['Destination'],
+                        'charge' => (string) $call['Charge'],
+                        'callid' => (string) $call['CallID'],
+                    ];
+                }
+            }
+        }
+
+        // dd($calls);
+        // $calls = collect();
+
+        // dd($response->body());
+
+
+        return view('customer.callHistory', [
+            'calls' => $calls,
+            'filters' => $request->only(['date', 'callid', 'recordcount', 'direction']),
         ]);
-
-        // dd($apiResponse->ok());
-
-
-        if (!$apiResponse->ok()) {
-            throw new \Exception('Failed to retrieve user info from API.');
-        }
-
-        $xml = simplexml_load_string($apiResponse->body());
-
-        // لو XML فاضي أو غير مفهوم
-        if (!$xml || empty($xml->Customer)) {
-            throw new \Exception('Invalid XML response.');
-        }
-
-        // dd($Userr->email);
-        
-
-        // بيانات المستخدم الحقيقية
-        $user = [
-            'username' => (string) $xml->Customer,
-            'email' =>  $Userr->email,
-            'phone_number' => $Userr->phone_number,
-            'timezone' => $Userr->timezone, // مؤقتًا، لو عندك من API عدله
-        ];
-
-        // dd($user);
-
-
-        // الرصيد
-        $balance = [
-            'total' => (float) $xml->Balance,
-            'specific' => (float) $xml->SpecificBalance,
-        ];
-
-        // لسه مكالمات وهمية (زي ما طلبت)
-        $recentCalls = [
-            [
-                'datetime' => '2025-05-14 14:32',
-                'number' => '+201112223334',
-                'duration' => '3m 45s',
-                'cost' => 1.50,
-            ],
-            [
-                'datetime' => '2025-05-14 09:15',
-                'number' => '+201556677889',
-                'duration' => '2m 10s',
-                'cost' => 0.90,
-            ],
-            [
-                'datetime' => '2025-05-13 18:50',
-                'number' => '+201998877665',
-                'duration' => '5m 00s',
-                'cost' => 2.00,
-            ],
-            [
-                'datetime' => '2025-05-13 12:05',
-                'number' => '+201223344556',
-                'duration' => '1m 30s',
-                'cost' => 0.60,
-            ],
-            [
-                'datetime' => '2025-05-12 20:40',
-                'number' => '+201334455667',
-                'duration' => '4m 20s',
-                'cost' => 1.80,
-            ],
-        ];
-
-        // عرض الداشبورد
-        return view('customer.dashboard', compact('user', 'balance', 'recentCalls' ,'password'));
-
-    } catch (\Exception $e) {
-        // أي خطأ => تسجيل خروج وإعادة التوجيه
-        Auth::guard('customer')->logout();
-        session()->forget('customer_password');
-        return redirect()->route('customer.login.form')
-            ->with('error', 'We couldn’t load your dashboard. Please log in again to continue.');
-            // ->with('error', 'Session expired or invalid, please log in again.');
     }
-}
+
+    
 
 }

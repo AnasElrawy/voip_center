@@ -68,37 +68,7 @@ class CustomerAuthController extends Controller
                 // 'tariffrate' => $request->phone,
                 'country' => $dialCode,
                 'timezone' => $request->timezone,
-            ],
-            $messages = [
-
-            // Email
-            'email.required' => 'Email is required.',
-            'email.email' => 'Please enter a valid email address.',
-            'email.unique' => 'This email is already registered.',
-
-            // Username
-            'username.required' => 'Username is required.',
-            'username.unique' => 'This username is already taken.',
-            'username.regex' => 'Username can only contain letters, numbers, dashes, underscores, dots, and @ symbol.',
-
-            // Phone (phone_full)
-            'phone_full.required' => 'Phone number is required.',
-            'phone_full.regex' => 'Please enter a valid international phone number (e.g., +441234567890).',
-            'phone_full.unique' => 'This phone number is already in use.',
-
-            // Password
-            'customerpassword.required' => 'Password is required.',
-            'customerpassword.string' => 'Password must be a valid string.',
-            'customerpassword.min' => 'Password must be at least 4 characters.',
-            'customerpassword.max' => 'Password cannot exceed 39 characters.',
-            'customerpassword.regex' => 'Password can only contain letters, numbers, dashes, underscores, dots, and @ symbol.',
-
-            // Optional fields
-            'country_code.size' => 'Country code must be exactly 2 characters.',
-            'timezone.max' => 'Timezone must not exceed 50 characters.',
-            'ip_address.ip' => 'Please enter a valid IP address.',
-
-        ]
+            ]
         );
 
             $xml = simplexml_load_string($createCustomerApiResponse->body());
@@ -329,11 +299,11 @@ class CustomerAuthController extends Controller
         // 1. ابحث عن المستخدم محلياً
         $customer = Customer::where('username', $request->username)->first();
     
-        // if (! $customer) {
-        //     // return back()->withErrors(['msg' => 'No account found with that username.']);
-        //     return redirect()->route('customer.login.form')->with('error' , 'Incorrect username or password.');
-        //     // return redirect()->route('customer.login.form')->with('error' , 'No account found with that username.');
-        // }
+        if (! $customer) {
+            // return back()->withErrors(['msg' => 'No account found with that username.']);
+            return redirect()->route('customer.login.form')->with('error' , 'Incorrect username or password.');
+            // return redirect()->route('customer.login.form')->with('error' , 'No account found with that username.');
+        }
     
         // 2. تحقق من تفعيل الحساب
         if (! $customer->is_active || !$customer->email_verified_at) {
