@@ -39,11 +39,11 @@
 
             {{-- Token Hidden Input (for verification) --}}
             <input type="hidden" name="token" value="{{ request('token') }}">
-            <input type="hidden" name="email" value="{{ request('email') }}">
+            <!-- <input type="hidden" name="email" value="{{ request('email') }}"> -->
 
-            <div class="mb-3">
+            <!-- <div class="mb-3">
               <input type="email" name="email" class="form-control" placeholder="Your Email Address" required>
-            </div>
+            </div> -->
 
             <div class="mb-3">
               <input type="password" name="password" class="form-control" placeholder="New Password" required>

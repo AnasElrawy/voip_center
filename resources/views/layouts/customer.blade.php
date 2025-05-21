@@ -36,13 +36,12 @@
             <li class="nav-item"><a class="nav-link" href="">Dashboard</a></li>
             <li class="nav-item"><a class="nav-link" href="">Recharge</a></li>
             <li class="nav-item"><a class="nav-link" href="">Call History</a></li>
-            <li class="nav-item"><a class="nav-link" href="">My Numbers</a></li>
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" id="profileMenu" data-bs-toggle="dropdown">
                 {{ Auth::user()->username }}
               </a>
               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileMenu">
-                <li><a class="dropdown-item" href="">Profile</a></li>
+                <li><a class="dropdown-item" href="">Change Password</a></li>
                 <li>
                   <form method="POST" action="{{ route ('logout')}}">
                     @csrf
@@ -86,6 +85,8 @@
   <footer class="bg-white text-center py-3 border-top">
     <div class="container">
       <small>&copy; {{ date('Y') }} MyVoIP. All rights reserved.</small>
+      <br>
+      <small>V {{ env('VERSION') }}</small>
     </div>
   </footer>
 

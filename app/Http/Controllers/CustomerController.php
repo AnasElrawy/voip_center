@@ -135,6 +135,10 @@ public function dashboard()
 
         $Userr = Auth::guard('customer')->user();
 
+        $firstName = $Userr->first_name;
+        $lastName = $Userr->last_name;
+
+
         // dd($user);
 
         // اسم المستخدم من السيشن
@@ -220,7 +224,7 @@ public function dashboard()
         ];
 
         // عرض الداشبورد
-        return view('customer.dashboard', compact('user', 'balance', 'recentCalls'));
+        return view('customer.dashboard', compact('user', 'balance', 'recentCalls' ,'password'));
 
     } catch (\Exception $e) {
         // أي خطأ => تسجيل خروج وإعادة التوجيه

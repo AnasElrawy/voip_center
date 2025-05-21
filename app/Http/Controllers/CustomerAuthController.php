@@ -329,11 +329,11 @@ class CustomerAuthController extends Controller
         // 1. ابحث عن المستخدم محلياً
         $customer = Customer::where('username', $request->username)->first();
     
-        if (! $customer) {
-            // return back()->withErrors(['msg' => 'No account found with that username.']);
-            return redirect()->route('customer.login.form')->with('error' , 'Incorrect username or password.');
-            // return redirect()->route('customer.login.form')->with('error' , 'No account found with that username.');
-        }
+        // if (! $customer) {
+        //     // return back()->withErrors(['msg' => 'No account found with that username.']);
+        //     return redirect()->route('customer.login.form')->with('error' , 'Incorrect username or password.');
+        //     // return redirect()->route('customer.login.form')->with('error' , 'No account found with that username.');
+        // }
     
         // 2. تحقق من تفعيل الحساب
         if (! $customer->is_active || !$customer->email_verified_at) {
@@ -499,7 +499,7 @@ class CustomerAuthController extends Controller
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'email' => 'required|email|exists:customers,email',
+            // 'email' => 'required|email|exists:customers,email',
             'token' => 'required',
             'password' => [
                 'required',
@@ -535,7 +535,7 @@ class CustomerAuthController extends Controller
         ]);
 
         $reset = DB::table('password_resets')
-        ->where('email', $request->email)
+        // ->where('email', $request->email)
         ->where('token', $request->token)
         ->first();
         if (!$reset) {
@@ -543,7 +543,7 @@ class CustomerAuthController extends Controller
             ->with('error', 'The link you used is either expired or invalid. Please request a new password reset.');
         }
 
-        $customer = Customer::where('email', $request->email)->first();
+        $customer = Customer::where('email', $reset->email)->first();
 
         // Call VoIP API
         $apiUrl = config('my_app_settings.voip.api_url');

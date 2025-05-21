@@ -82,10 +82,18 @@
         vertical-align: middle;
         padding: 0.75rem 1rem;
     }
+
+    .app-download-badge {
+        height: 45px;
+        width: auto;
+        display: inline-block;
+    }
+
+
 </style>
 
 <div class="container py-5">
-    <h2 class="mb-4">Welcome, {{ auth('customer')->user()->username }} 👋</h2>
+    <h2 class="mb-4">Welcome, {{ auth('customer')->user()->first_name }}  {{ auth('customer')->user()->last_name }}👋</h2>
 
     <div class="dashboard-cards d-flex gap-4">
         <!-- User Info -->
@@ -107,14 +115,29 @@
             <p><strong>Specific Balance:</strong> ${{ number_format($balance['specific'], 2) }}</p>
         </div>
 
-        <!-- Actions -->
+        <!-- App Access Info -->
         <div class="dashboard-card">
             <div class="dashboard-card-header">
-                <i class="icon-secondary bi bi-gear"></i> Quick Actions
+                <i class="icon-secondary bi bi-phone"></i> Mobile App Access
             </div>
-            <a href="" class="btn btn-outline-primary mb-2">🔑 Change Password</a>
-            <a href="{{ route('logout') }}" class="btn btn-outline-danger">🚪 Logout</a>
+            <p><strong>Username:</strong> {{ $user['username'] }}</p>
+            <p>
+                <strong>Password:</strong>
+                <span id="maskedPassword">••••••••</span>
+                <button type="button" onclick="togglePassword()" class="btn btn-sm btn-link p-0">Show</button>
+            </p>
+            <div class="d-flex align-items-center gap-3 mt-2">
+                <a href="https://play.google.com/store/apps/details?id=dellmont.YourDialer&hl=en_US" target="_blank">
+                    <img src="{{ asset('images/google-play-badge.png') }}" alt="Download on Google Play" class="app-download-badge" >
+                </a>
+
+                <a href="https://apps.apple.com/nl/app/yourdialer/id498950671" target="_blank">
+                    <img src="{{ asset('images/app-store-badge.svg') }}" alt="Download on App Store" class="app-download-badge">
+                </a>
+            </div>
+
         </div>
+
     </div>
 
     <!-- Recent Calls -->
@@ -152,4 +175,18 @@
         </div>
     </div>
 </div>
+
+<script>
+    function togglePassword() {
+        const el = document.getElementById('maskedPassword');
+        if (el.innerText.includes('•')) {
+            el.innerText = '{{ $password }}'; 
+            event.target.innerText = 'Hide';
+        } else {
+            el.innerText = '••••••••';
+            event.target.innerText = 'Show';
+        }
+    }
+</script>
+
 @endsection
