@@ -4,6 +4,8 @@
 <div class="container">
     <h2>Call History</h2>
 
+
+
     <form method="GET" action="{{ route('customer.call.history') }}" class="mb-4">
         <div class="row">
             <div class="col-md-3">
@@ -12,11 +14,6 @@
                     value="{{ request('date') }}">
             </div>
 
-            <div class="col-md-2">
-                <label>Call ID:</label>
-                <input type="number" name="callid" class="form-control"
-                    value="{{ request('callid') }}">
-            </div>
 
             <div class="col-md-2">
                 <label>Record Count:</label>
@@ -32,11 +29,24 @@
                 </select>
             </div>
 
+            <div class="col-md-2">
+                <label>Call ID:</label>
+                <input type="number" name="callid" class="form-control"
+                    value="{{ request('callid') }}">
+            </div>
+
             <div class="col-md-2 mt-4">
                 <button class="btn btn-primary w-100">Search</button>
             </div>
         </div>
     </form>
+
+    <p class="text-muted small mb-3" >
+        <strong>Note:</strong> You can choose the direction of search:  
+        <strong>Forward</strong> (from the selected date **up to now**)  
+        or  
+        <strong>Backward</strong> (from the selected date **going backward in time**).
+    </p>
 
     @if(empty($calls))
         <div class="alert alert-warning">No call records found.</div>
@@ -57,7 +67,7 @@
                         <td>{{ $call['start_time'] }}</td>
                         <td>{{ $call['destination'] }}</td>
                         <td>{{ $call['duration'] }}</td>
-                        <td>{{ $call['charge'] }}</td>
+                        <td>€ {{ $call['charge'] }}</td>
                         <td>{{ $call['callid'] }}</td>
                     </tr>
                 @endforeach

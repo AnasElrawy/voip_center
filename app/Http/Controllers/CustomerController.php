@@ -166,7 +166,7 @@ class CustomerController extends Controller
                         'duration' => (string) $call['Duration'],
                         'destination' => (string) $call['Destination'],
                         'charge' => (string) $call['Charge'],
-                        'callid' => (string) $call['CallID'],
+                        'callid' => (string) $call['CallId'],
                     ];
                 }
             }
@@ -184,6 +184,77 @@ class CustomerController extends Controller
         ]);
     }
 
+
+    public function showChangePassword ()
+    {
+        return view('customer.change-password');
+    }
+
+    public function changePassword(Request $request)
+    {
+
+        $request->validate([
+            'old_password' => 'required|string',
+            'new_password' => [
+                'required',
+                'string',
+                'min:4',
+                'max:39',
+                'regex:/^[a-zA-Z0-9_\-@.]+$/',
+                function ($attribute, $value, $fail) {
+                    $lower = strtolower($value);
+
+                    if (preg_match('/(.)\1{3,}/', $lower)) {
+                        return $fail("Password must not contain repeated characters.");
+                    }
+
+                    $sequence = 'abcdefghijklmnopqrstuvwxyz0123456789';
+                    for ($i = 0; $i <= strlen($sequence) - 4; $i++) {
+                        if (strpos($lower, substr($sequence, $i, 4)) !== false) {
+                            $fail("Password must not contain sequential characters.");
+                            break;
+                        }
+                    }
+                }
+            ]
+        ]);
+
+        $userName = Auth::guard('customer')->user()->username;
+        $password = Crypt::decryptString(session('customer_password'));
+
+
+        $customer = Auth::guard('customer')->user();
+
+        // إرسال الطلب إلى API
+        $url = config('my_app_settings.voip.api_url'); // تأكد من وجوده في config
+
+        try {
+
+            $response = Http::get($url, [
+                'command' => 'changepassword',
+                'username' => config('my_app_settings.voip.username'),
+                'password' => config('my_app_settings.voip.password'),
+                'customer' => $customer->username,
+                'oldcustomerpassword' => $request->old_password,
+                'newcustomerpassword' => $request->new_password,
+            ]);
+
+            $xml = simplexml_load_string($response);
+
+            if ($xml && $xml->Result == 'Success') {
+                return back()->with('success', 'Password changed successfully.');
+            } else {
+                return back()->with('error', 'Failed to change password: ' . ($xml->Reason ?? 'Unknown error'));
+            }
+
+        } catch (\Exception $e) {
+            // سجل الخطأ في الـ log
+            Log::error('Password change API failed: ' . $e->getMessage());
+
+            return back()->with('error', 'An unexpected error occurred. Please try again later.');
+        }
+
+    }
     
 
 }

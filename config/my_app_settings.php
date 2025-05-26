@@ -14,5 +14,7 @@ return [
     ],
 
     'version' => env ('VERSION'),
+
+    'traiffrate' => env('TRAIFF_RATE'),
     
 ];

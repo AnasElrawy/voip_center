@@ -56,6 +56,9 @@ Route::prefix('customer')->group(function () {
     Route::post('reset-password', [CustomerAuthController::class, 'resetPassword'])->name('customer.resetPassword');
 
     // Route::post('forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('customer.forgotPassword.email');
+    
+    Route::get('complete-registration', [CustomerAuthController::class, 'showCompleteRegistrationForm'])->name('customer.complete-registration');
+    Route::post('complete-registration', [CustomerAuthController::class, 'completeRegistration'])->name('customer.complete-registration');
 
 });
 
@@ -89,10 +92,11 @@ Route::middleware(['auth:customer'])->group(function () {
 
     Route::get('/call-history', [CustomerController::class, 'callHistory'])->name('customer.call.history');
 
+    Route::get('/change-password', [CustomerController::class, 'showChangePassword'])->name('customer.changePassword.form');
+    Route::post('/change-password', [CustomerController::class, 'changePassword'])->name('customer.changePassword');
 
     Route::post('logout', [CustomerAuthController::class, 'logout']) ->name('logout');
 
 });
-
 
 

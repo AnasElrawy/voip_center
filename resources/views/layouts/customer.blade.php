@@ -41,7 +41,7 @@
                 {{ Auth::user()->username }}
               </a>
               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileMenu">
-                <li><a class="dropdown-item" href="">Change Password</a></li>
+                <li><a class="dropdown-item" href="{{ route('customer.changePassword.form') }}">Change Password</a></li>
                 <li>
                   <form method="POST" action="{{ route ('logout')}}">
                     @csrf

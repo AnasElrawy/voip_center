@@ -16,6 +16,10 @@ use Illuminate\Support\Facades\Auth;
 // use App\Mail\VerifyCustomerEmail;
 use Illuminate\Support\Facades\Crypt;
 use App\Http\Requests\StoreCustomerRequest;
+use Illuminate\Validation\Rule;
+
+// use Timezone\Timezone;
+
 
 
 
@@ -39,6 +43,14 @@ class CustomerAuthController extends Controller
 
     public function register(StoreCustomerRequest  $request)
     {
+
+        // $windowsName = Timezone::toWindows('Africa/Cairo'); // "Egypt Standard Time"
+        // $ianaName = Timezone::toIana('Egypt Standard Time'); // "Africa/Cairo"
+
+
+
+
+        // dd($windowsName,$ianaName);
         
         try {
             DB::beginTransaction();
@@ -59,17 +71,17 @@ class CustomerAuthController extends Controller
 
             // 2. Store customer in API
             $createCustomerApiResponse = Http::get(config('my_app_settings.voip.api_url'), [
-                'command' => 'createcustomer',
-                'username' => config('my_app_settings.voip.username'),
-                'password' => config('my_app_settings.voip.password'),
-                'customer' => $request->username,
-                'customerpassword' => $request->customerpassword,
-                // 'geocallcli' => $request->phone_full,
-                // 'tariffrate' => $request->phone,
-                'country' => $dialCode,
-                'timezone' => $request->timezone,
-            ]
-        );
+                    'command' => 'createcustomer',
+                    'username' => config('my_app_settings.voip.username'),
+                    'password' => config('my_app_settings.voip.password'),
+                    'customer' => $request->username,
+                    'customerpassword' => $request->customerpassword,
+                    // 'geocallcli' => $request->phone_full,
+                    'tariffrate' => config('my_app_settings.traiffrate'),
+                    'country' => $dialCode,
+                    'timezone' => $request->timezone,
+                ]
+            );
 
             $xml = simplexml_load_string($createCustomerApiResponse->body());
 
@@ -145,7 +157,7 @@ class CustomerAuthController extends Controller
 
         // If the customer doesn't exist, redirect to registration with error
         if (!$customer) {
-            return redirect()->route('customer.register.form')->withErrors(['msg' =>  'We couldn’t find your email address. Please register first.']);
+            return redirect()->route('customer.register.form')->with('error', 'We couldn’t find your email address. Please register first.');
         }
 
         // If the email is already verified and the account is active, redirect to login
@@ -298,6 +310,58 @@ class CustomerAuthController extends Controller
     
         // 1. ابحث عن المستخدم محلياً
         $customer = Customer::where('username', $request->username)->first();
+
+        
+        if (! $customer) {
+            // حاول تحقق من الـ API
+            $apiResponse = Http::get(config('my_app_settings.voip.api_url'), [
+                'command' => 'validateuser',
+                'username' => config('my_app_settings.voip.username'),
+                'password' => config('my_app_settings.voip.password'),
+                'customer' => $request->username,
+                'customerpassword' => $request->password,
+            ]);
+
+            $xml = simplexml_load_string($apiResponse->body());
+
+            if ($xml && $xml->Result == 'Success') {
+                // جلب بيانات المستخدم من API (مثلاً عبر أمر getuserinfo)
+                $userInfoResponse = Http::get(config('my_app_settings.voip.api_url'), [
+                    'command' => 'getuserinfo',
+                    'username' => config('my_app_settings.voip.username'),
+                    'password' => config('my_app_settings.voip.password'),
+                    'customer' => $request->username,
+                    'customerpassword' => $request->password,
+                ]);
+
+                if ($userInfoResponse->ok()) {
+                    $userInfoXml = simplexml_load_string($userInfoResponse->body());
+
+                    // dd($userInfoXml);
+
+                    $userFull = (string) $userInfoXml->Customer; 
+                    $username = explode('*', $userFull)[0];
+
+                    $email =(string)$userInfoXml->EmailAddress ?? null;
+
+
+                    $customer = Customer::create([
+                        'first_name' => null,
+                        'last_name' => null,
+                        'username' => $username,
+                        'email' => $email,
+                        'phone_number' => null,
+                        'is_active' => false,
+                        'email_verified_at' => null,
+                    ]);
+
+                    return redirect()->route('customer.complete-registration', ['username' => $username ,'email' => $email ])
+                        ->with('info', 'Please complete your registration.');
+                }
+            }
+
+            return redirect()->route('customer.login.form')->with('error', 'Incorrect username or password.');
+        }
     
         if (! $customer) {
             // return back()->withErrors(['msg' => 'No account found with that username.']);
@@ -547,6 +611,95 @@ class CustomerAuthController extends Controller
 
         // return back()->withErrors(['error' => 'Could not reset password. Please try again.']);
     }
+
+    
+    public function showCompleteRegistrationForm(Request $request)
+    {
+        
+        $username = $request->query('username');
+        $email = $request->query('email');
+
+        return view('auth.complete-registration', compact('username', 'email'));
+        // return view('auth.complete-registration');
+    }
+
+    public function CompleteRegistration(Request $request)
+    {
+
+        $customer = Customer::where('username', $request->username)->first();
+
+        $request->validate([
+            'first_name' => 'required|string|max:50|regex:/^[\pL\s\-]+$/u',
+            'last_name' => 'required|string|max:50|regex:/^[\pL\s\-]+$/u',
+            'email' => [
+                'required', 'email',
+                Rule::unique('customers', 'email')->ignore($customer->id)
+            ],
+            'phone_full' => [
+                'required',
+                'regex:/^\+?[1-9][0-9]{6,15}$/',
+                Rule::unique('customers', 'phone_number')->ignore($customer->id),
+                function ($attribute, $value, $fail) {
+                    if (preg_match('/(.)\1{5,}/', $value)) {
+                        $fail("The phone number must not contain repeated digits.");
+                    }
+                }
+            ],
+            'country_code' => 'nullable|string|size:2',
+            'timezone' => 'nullable|string|max:50',
+            'ip_address' => 'nullable|ip',
+        ], [
+            'first_name.required' => 'First name is required.',
+            'first_name.string' => 'First name must be a valid string.',
+            'first_name.max' => 'First name cannot exceed 50 characters.',
+            'first_name.regex' => 'First name can only contain letters, spaces, and hyphens.',
+            'last_name.required' => 'Last name is required.',
+            'last_name.string' => 'Last name must be a valid string.',
+            'last_name.max' => 'Last name cannot exceed 50 characters.',
+            'last_name.regex' => 'Last name can only contain letters, spaces, and hyphens.',
+            'phone_full.required' => 'Phone number is required.',
+            'phone_full.regex' => 'Please enter a valid international phone number (e.g., +441234567890).',
+            'phone_full.unique' => 'This phone number is already in use.',
+            'email.required' => 'Email is required.',
+            'email.email' => 'Please enter a valid email address.',
+            'email.unique' => 'This email is already registered.',
+        ]);
+
+
+        // 1. Store customer locally
+        $customer->update([
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
+            'email' => $request->email,
+            'phone_number' => $request->phone_full,
+            'timezone' => $request->timezone,
+            'country_code' => $request->country_code,
+            'email_verified_at' => null, // ضروري لإجباره على التفعيل
+        ]);
+            
+        // 2. Generate email verification token
+        do {
+            $token = Str::random(64); 
+        
+            $existingToken = EmailVerification::where('token', $token)->first();
+
+        } while ($existingToken); 
+            
+        EmailVerification::create([
+            'email' => $request->email,
+            'token' => $token,
+            'expires_at' => Carbon::now()->addMinutes(30),
+        ]);
+
+        // 5. Send verification email
+        Mail::to($request->email)->send(new \App\Mail\VerifyCustomerEmail($token, $request->email));
+
+        return redirect()->route('customer.verify.notice');
+
+    
+    }
+
+    
 
     
 

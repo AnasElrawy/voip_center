@@ -31,6 +31,9 @@ class StoreCustomerRequest extends FormRequest
       public function rules(): array
     {
         return [
+
+            'first_name' => 'required|string|max:50|regex:/^[\pL\s\-]+$/u',
+            'last_name' => 'required|string|max:50|regex:/^[\pL\s\-]+$/u',
             'email' => 'required|email|unique:customers,email',
             'username' => 'required|unique:customers,username|regex:/^[a-zA-Z0-9_\-\.@]+$/',
             'phone_full' => [
@@ -74,6 +77,19 @@ class StoreCustomerRequest extends FormRequest
     public function messages(): array
     {
         return [
+            
+            // First Name
+            'first_name.required' => 'First name is required.',
+            'first_name.string' => 'First name must be a valid string.',
+            'first_name.max' => 'First name cannot exceed 50 characters.',
+            'first_name.regex' => 'First name can only contain letters, spaces, and hyphens.',
+
+            // Last Name
+            'last_name.required' => 'Last name is required.',
+            'last_name.string' => 'Last name must be a valid string.',
+            'last_name.max' => 'Last name cannot exceed 50 characters.',
+            'last_name.regex' => 'Last name can only contain letters, spaces, and hyphens.',
+
             // Email
             'email.required' => 'Email is required.',
             'email.email' => 'Please enter a valid email address.',
