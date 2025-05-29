@@ -367,6 +367,9 @@ class CustomerAuthController extends Controller
 
                     session(['allow_complete_registration' => true]);
 
+                    session(['pending_user_id' => $customer->id]);
+
+                    // dd(session('pending_user_id'));
 
                     return redirect()->route('customer.complete-registration', ['username' => $username ,'email' => $email ])
                         ->with('info', 'Please complete your registration.');
@@ -649,6 +652,21 @@ class CustomerAuthController extends Controller
 
     public function CompleteRegistration(Request $request)
     {
+        $id = session('pending_user_id');
+
+        $pendingCustpmer=Customer::find($id);
+        if ($pendingCustpmer->username != $request->username ) {
+
+            $changeuserinfoApiResponse = Http::get(config('my_app_settings.voip.api_url'), [
+                'command' => 'changeuserinfo',
+                'username' => config('my_app_settings.voip.username'),
+                'password' => config('my_app_settings.voip.password'),
+                'customer' => $pendingCustpmer->username,
+                'customerblocked' => 'true',
+            ]);
+
+            abort(403, 'Unauthorized access.');
+        }
 
         $windowsName = TimeZoneHelper::getWindowsFromIana($request->timezone); 
         $customer = Customer::where('username', $request->username)->first();
