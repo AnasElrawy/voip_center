@@ -20,7 +20,7 @@
   <div class="row h-100">
     {{-- the image --}}
     <div class="col-lg-6 d-none d-lg-flex align-items-center justify-content-center p-0">
-      <img src="{{ asset('images/complete-profile.png') }}" 
+      <img src="{{ asset('images/Complete Registration.png') }}" 
            alt="Complete Profile Illustration"
            class="img-fluid"
            style="max-height: 90%;">
@@ -58,21 +58,26 @@
             </div>
 
 
+
             {{-- Username (readonly) --}}
             <div class="mb-3">
               <label for="username" class="form-label">Username</label>
-              <input type="text" id="username" name="username" 
-                     value="{{ old('username', $username) }}"
-                     class="form-control" readonly>
+              <input  type="text" id="username" name="username" 
+                    value="{{ old('username', $username) }}"
+                    class="form-control" disabled>
             </div>
 
-            {{-- Email --}}
-            <div class="mb-3">
-              <label for="email" class="form-label">Email</label>
-              <input type="email" id="email" name="email" 
-                     value="{{ old('email', $email) }}"
-                     class="form-control @error('email') is-invalid @enderror">
-            </div>
+            @if (email_enabled())
+              {{-- Email --}}
+              <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" id="email" name="email" 
+                      value="{{ old('email', $email) }}"
+                      class="form-control @error('email') is-invalid @enderror"
+                      @if (!empty($email)) disabled @endif>
+              </div>
+            @endif
+
 
             {{-- Phone --}}
             <div class="mb-3">

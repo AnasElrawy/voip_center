@@ -20,12 +20,50 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 
 
+
+
+  @php
+    $color = layout_color();
+  @endphp
+
+  <style>
+    
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  main {
+    flex: 1;
+  }
+    
+
+  .btn {
+    background-color: {{ $color }} !important;
+    border-color: {{ $color }} !important;
+    color: white !important;
+  }
+
+  .btn:hover,
+  .btn:focus {
+    filter: brightness(90%);
+  }
+
+
+  </style>
+
 </head>
 <body class="bg-light">
 
   <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <nav class="navbar navbar-expand-lg navbar-dark "  style="background-color: {{ $color }};">
     <div class="container">
+      <img src="{{ logo_image() }}" alt="Logo" height="40" style='margin-right: 10px;'>
       <a class="navbar-brand" href="">MyVoIP</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
         <span class="navbar-toggler-icon"></span>

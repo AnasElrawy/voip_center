@@ -35,12 +35,16 @@ Route::prefix('customer')->group(function () {
     Route::get('register', [CustomerAuthController::class, 'showRegisterForm'])->name('customer.register.form');
     Route::post('register', [CustomerAuthController::class, 'register'])->name('customer.register');
     
-    Route::get('verify-email', [CustomerAuthController::class, 'verifyEmail'])->name('verify.email');
-    
-    Route::get('verify-notice', [CustomerAuthController::class, 'showVerifyNotice']) ->name('customer.verify.notice');
-    
-    Route::get('verify-resend', [CustomerAuthController::class, 'showResendForm'])->name('customer.verify.resend.form');
-    Route::post('verify-resend', [CustomerAuthController::class, 'resendVerificationEmail'])->name('customer.verify.resend');
+    if (email_enabled()) {
+        
+        Route::get('verify-email', [CustomerAuthController::class, 'verifyEmail'])->name('verify.email');
+        
+        Route::get('verify-notice', [CustomerAuthController::class, 'showVerifyNotice']) ->name('customer.verify.notice');
+        
+        Route::get('verify-resend', [CustomerAuthController::class, 'showResendForm'])->name('customer.verify.resend.form');
+        Route::post('verify-resend', [CustomerAuthController::class, 'resendVerificationEmail'])->name('customer.verify.resend');
+
+    }
 
     Route::get('login', [CustomerAuthController::class, 'showLoginForm']) ->name('customer.login.form');
     Route::post('login', [CustomerAuthController::class, 'login'])->name('customer.login.submit');
@@ -48,17 +52,23 @@ Route::prefix('customer')->group(function () {
     ///////////set in medell ware auth  })->middleware(['auth', 'verified']);
     // Route::get('logout', [CustomerAuthController::class, 'logout']) ->name('customer.logout');
     ///////////////  
-    
-    Route::get('forgot-password', [CustomerAuthController::class, 'showForgotPasswordForm'])->name('customer.forgotPassword.form');
-    Route::post('forgot-password', [CustomerAuthController::class, 'sendForgotPasswordEmail'])->name('customer.forgotPassword.send');
-   
-    Route::get('reset-password', [CustomerAuthController::class, 'showResetPasswordForm'])->name('customer.resetPassword.form');
-    Route::post('reset-password', [CustomerAuthController::class, 'resetPassword'])->name('customer.resetPassword');
 
-    // Route::post('forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('customer.forgotPassword.email');
+    if (email_enabled()) {
+        
+        Route::get('forgot-password', [CustomerAuthController::class, 'showForgotPasswordForm'])->name('customer.forgotPassword.form');
+        Route::post('forgot-password', [CustomerAuthController::class, 'sendForgotPasswordEmail'])->name('customer.forgotPassword.send');
+       
+        Route::get('reset-password', [CustomerAuthController::class, 'showResetPasswordForm'])->name('customer.resetPassword.form');
+        Route::post('reset-password', [CustomerAuthController::class, 'resetPassword'])->name('customer.resetPassword');
+    
+        // Route::post('forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('customer.forgotPassword.email');
+        
+        
+    }
     
     Route::get('complete-registration', [CustomerAuthController::class, 'showCompleteRegistrationForm'])->name('customer.complete-registration');
     Route::post('complete-registration', [CustomerAuthController::class, 'completeRegistration'])->name('customer.complete-registration');
+    
 
 });
 

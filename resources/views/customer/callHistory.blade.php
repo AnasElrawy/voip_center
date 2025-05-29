@@ -67,7 +67,7 @@
                         <td>{{ $call['start_time'] }}</td>
                         <td>{{ $call['destination'] }}</td>
                         <td>{{ $call['duration'] }}</td>
-                        <td>€ {{ $call['charge'] }}</td>
+                        <td>{{currency_symbol()}}  {{ $call['charge'] }}</td>
                         <td>{{ $call['callid'] }}</td>
                     </tr>
                 @endforeach

@@ -69,7 +69,7 @@ class CustomerController extends Controller
 
 
             $balance = [
-                'total' => (float) $xml->Balance,
+                'total' => convert_amount((float) $xml->Balance),
                 'specific' => (float) $xml->SpecificBalance,
             ];
 
@@ -96,7 +96,7 @@ class CustomerController extends Controller
                             'datetime' => trim((string) $call['StartTime']),
                             'number' => (string) $call['Destination'],
                             'duration' => (string) $call['Duration'],
-                            'cost' => (float) $call['Charge'],
+                            'cost' => convert_amount((float) $call['Charge']),
                         ];
                     }
                 }
@@ -165,7 +165,7 @@ class CustomerController extends Controller
                         'start_time' => (string) $call['StartTime'],
                         'duration' => (string) $call['Duration'],
                         'destination' => (string) $call['Destination'],
-                        'charge' => (string) $call['Charge'],
+                        'charge' => convert_amount((string) $call['Charge']),
                         'callid' => (string) $call['CallId'],
                     ];
                 }

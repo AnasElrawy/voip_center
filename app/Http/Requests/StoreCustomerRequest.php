@@ -34,7 +34,14 @@ class StoreCustomerRequest extends FormRequest
 
             'first_name' => 'required|string|max:50|regex:/^[\pL\s\-]+$/u',
             'last_name' => 'required|string|max:50|regex:/^[\pL\s\-]+$/u',
-            'email' => 'required|email|unique:customers,email',
+            
+            'email' => email_enabled() ? [
+            'required',
+            'email',
+            'unique:customers,email',
+            ] : ['nullable', 'email'],
+            
+            // 'email' => 'required|email|unique:customers,email',
             'username' => 'required|unique:customers,username|regex:/^[a-zA-Z0-9_\-\.@]+$/',
             'phone_full' => [
                 'required',

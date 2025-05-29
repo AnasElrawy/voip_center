@@ -101,7 +101,11 @@
             <div class="dashboard-card-header">
                 <i class="icon-primary bi bi-person-circle"></i> User Information
             </div>
-            <p><strong>Email:</strong> {{ auth('customer')->user()->email ?? 'N/A' }}</p>
+            
+            @if (email_enabled())
+                <p><strong>Email:</strong> {{ auth('customer')->user()->email ?? 'N/A' }}</p>
+            @endif
+
             <p><strong>Phone:</strong> {{ auth('customer')->user()->phone_number ?? 'N/A' }}</p>
             <p><strong>Timezone:</strong> {{ auth('customer')->user()->timezone ?? 'N/A' }}</p>
         </div>
@@ -111,8 +115,7 @@
             <div class="dashboard-card-header">
                 <i class="icon-success bi bi-wallet2"></i> Balance Overview
             </div>
-            <p><strong>Total Balance:</strong> € {{ number_format($balance['total'], 2) }}</p>
-            <p><strong>Specific Balance:</strong> € {{ number_format($balance['specific'], 2) }}</p>
+            <p><strong>Total Balance:</strong> {{currency_symbol()}} {{ number_format($balance['total'], 2) }}</p>
         </div>
 
         <!-- App Access Info -->
@@ -123,8 +126,10 @@
             <p><strong>Username:</strong> {{ $user['username'] }}</p>
             <p>
                 <strong>Password:</strong>
-                <span id="maskedPassword">••••••••</span>
-                <button type="button" onclick="togglePassword()" class="btn btn-sm btn-link p-0">Show</button>
+                <span id="maskedPassword">••••••••</span><br>
+                    <button type="button" onclick="togglePassword()" class="btn btn-primary d-block mx-auto " 
+                    style="--bs-btn-padding-y: .25rem; --bs-btn-padding-x: .5rem; --bs-btn-font-size: .75rem; width:30%; border-radius: 10px;">
+                    Show</button>
             </p>
             <div class="d-flex align-items-center gap-3 mt-2">
                 <a href="https://play.google.com/store/apps/details?id=dellmont.YourDialer&hl=en_US" target="_blank">
@@ -165,7 +170,7 @@
                                     <td>{{ \Carbon\Carbon::parse($call['datetime'])->format('Y-m-d H:i') }}</td>
                                     <td>{{ $call['number'] }}</td>
                                     <td>{{ $call['duration'] }} mins</td>
-                                    <td>€ {{ number_format($call['cost'], 2) }}</td>
+                                    <td>{{currency_symbol()}} {{ number_format($call['cost'], 2) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

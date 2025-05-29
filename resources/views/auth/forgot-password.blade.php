@@ -8,7 +8,7 @@
 
     <!-- Left side: Illustration Image -->
     <div class="col-lg-6 d-none d-lg-flex align-items-center justify-content-center p-0 bg-light">
-      <img src="{{ asset('images/reset-password.png') }}" 
+      <img src="{{ asset('images/forgot password.png') }}" 
            alt="Reset Password Illustration" 
            class="img-fluid" 
            style="max-height: 90%;">

@@ -17,8 +17,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
 use App\Http\Requests\StoreCustomerRequest;
 use Illuminate\Validation\Rule;
+use App\Helpers\TimeZoneHelper;
 
-// use Timezone\Timezone;
 
 
 
@@ -44,14 +44,12 @@ class CustomerAuthController extends Controller
     public function register(StoreCustomerRequest  $request)
     {
 
-        // $windowsName = Timezone::toWindows('Africa/Cairo'); // "Egypt Standard Time"
-        // $ianaName = Timezone::toIana('Egypt Standard Time'); // "Africa/Cairo"
 
-
-
-
-        // dd($windowsName,$ianaName);
+        $windowsName = TimeZoneHelper::getWindowsFromIana($request->timezone); 
         
+        // dd(email_enabled());
+
+
         try {
             DB::beginTransaction();
     
@@ -59,10 +57,11 @@ class CustomerAuthController extends Controller
             $customer = Customer::create([
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
-                'email' => $request->email,
+                'email' => email_enabled() ? $request->email : null,
+                // 'email' => $request->email,
                 'username' => $request->username,
                 'phone_number' => $request->phone_full,
-                'timezone' => $request->timezone,
+                'timezone' => $windowsName,
                 'is_active' => false,
             ]);
 
@@ -79,7 +78,7 @@ class CustomerAuthController extends Controller
                     // 'geocallcli' => $request->phone_full,
                     'tariffrate' => config('my_app_settings.traiffrate'),
                     'country' => $dialCode,
-                    'timezone' => $request->timezone,
+                    'timezone' => $windowsName,
                 ]
             );
 
@@ -94,41 +93,51 @@ class CustomerAuthController extends Controller
                 DB::rollBack();
             
                 return back()->with(
-                    'error' , 'This username might already be taken on our provider. Please choose another one.',
+                    'error' , 'This username might already be taken. Please choose another one.',
                 );
             }
             
-    
-            // 3. Temporarily block the customer 
-            $changeuserinfoApiResponse = Http::get(config('my_app_settings.voip.api_url'), [
-                'command' => 'changeuserinfo',
-                'username' => config('my_app_settings.voip.username'),
-                'password' => config('my_app_settings.voip.password'),
-                'customer' => $request->username,
-                'customerblocked' => 'true',
-            ]);
-    
-    
-            // 4. Generate email verification token
-            do {
-                $token = Str::random(64); 
-            
-                $existingToken = EmailVerification::where('token', $token)->first();
+            if (email_enabled()) {
 
-            } while ($existingToken); 
+                // 3. Temporarily block the customer 
+                $changeuserinfoApiResponse = Http::get(config('my_app_settings.voip.api_url'), [
+                    'command' => 'changeuserinfo',
+                    'username' => config('my_app_settings.voip.username'),
+                    'password' => config('my_app_settings.voip.password'),
+                    'customer' => $request->username,
+                    'customerblocked' => 'true',
+                ]);
+        
+        
+                // 4. Generate email verification token
+                do {
+                    $token = Str::random(64); 
                 
-            EmailVerification::create([
-                'email' => $request->email,
-                'token' => $token,
-                'expires_at' => Carbon::now()->addMinutes(30),
-            ]);
-    
-            // 5. Send verification email
-            Mail::to($request->email)->send(new \App\Mail\VerifyCustomerEmail($token, $request->email));
-    
+                    $existingToken = EmailVerification::where('token', $token)->first();
+
+                } while ($existingToken); 
+                    
+                EmailVerification::create([
+                    'email' => $request->email,
+                    'token' => $token,
+                    'expires_at' => Carbon::now()->addMinutes(30),
+                ]);
+        
+                // 5. Send verification email
+                Mail::to($request->email)->send(new \App\Mail\VerifyCustomerEmail($token, $request->email));
+                
+                DB::commit();
+        
+                return redirect()->route('customer.verify.notice');
+            
+            }
+
+
             DB::commit();
+            return redirect()->route('customer.login.form')->with('success', 'Your account has been created. You can now log in.');
+
+
     
-            return redirect()->route('customer.verify.notice');
     
         } catch (\Exception $e) {
             DB::rollBack();
@@ -312,7 +321,7 @@ class CustomerAuthController extends Controller
         $customer = Customer::where('username', $request->username)->first();
 
         
-        if (! $customer) {
+        if (!$customer) {
             // حاول تحقق من الـ API
             $apiResponse = Http::get(config('my_app_settings.voip.api_url'), [
                 'command' => 'validateuser',
@@ -349,11 +358,15 @@ class CustomerAuthController extends Controller
                         'first_name' => null,
                         'last_name' => null,
                         'username' => $username,
-                        'email' => $email,
+                        'email' => email_enabled() ? $request->email : null,
+                        // 'email' => $email,
                         'phone_number' => null,
                         'is_active' => false,
                         'email_verified_at' => null,
                     ]);
+
+                    session(['allow_complete_registration' => true]);
+
 
                     return redirect()->route('customer.complete-registration', ['username' => $username ,'email' => $email ])
                         ->with('info', 'Please complete your registration.');
@@ -363,17 +376,16 @@ class CustomerAuthController extends Controller
             return redirect()->route('customer.login.form')->with('error', 'Incorrect username or password.');
         }
     
-        if (! $customer) {
-            // return back()->withErrors(['msg' => 'No account found with that username.']);
-            return redirect()->route('customer.login.form')->with('error' , 'Incorrect username or password.');
-            // return redirect()->route('customer.login.form')->with('error' , 'No account found with that username.');
+
+        if (email_enabled()) {
+            
+            // 2. تحقق من تفعيل الحساب
+            if (! $customer->is_active || !$customer->email_verified_at) {
+                return back()->withErrors(['msg' => 'Your account is not activated yet. Please check your email.']);
+            }
+        
         }
-    
-        // 2. تحقق من تفعيل الحساب
-        if (! $customer->is_active || !$customer->email_verified_at) {
-            return back()->withErrors(['msg' => 'Your account is not activated yet. Please check your email.']);
-        }
-    
+
         // 3. تحقق من صحة البيانات عبر API
         $apiResponse = Http::get(config('my_app_settings.voip.api_url'), [
             'command' => 'validateuser',
@@ -387,7 +399,9 @@ class CustomerAuthController extends Controller
         if ($apiResponse->failed()) {
             return redirect()->route('customer.login.form')->with('error' ,'Something is wrong. Please try again later.');
         }
-        
+
+        // Check block status and record the log of login
+
         $ip = $request->header('CF-Connecting-IP') ??
         $request->header('X-Forwarded-For') ??
         $request->ip();
@@ -615,9 +629,19 @@ class CustomerAuthController extends Controller
     
     public function showCompleteRegistrationForm(Request $request)
     {
+
+        // if (!session('allow_complete_registration')) {
+        //     abort(403, 'Unauthorized access');
+        // }
+
+        session()->forget('allow_complete_registration');
+
+
         
         $username = $request->query('username');
         $email = $request->query('email');
+
+        
 
         return view('auth.complete-registration', compact('username', 'email'));
         // return view('auth.complete-registration');
@@ -626,15 +650,25 @@ class CustomerAuthController extends Controller
     public function CompleteRegistration(Request $request)
     {
 
+        $windowsName = TimeZoneHelper::getWindowsFromIana($request->timezone); 
         $customer = Customer::where('username', $request->username)->first();
+
+        $emailRules = ['email', Rule::unique('customers', 'email')->ignore($customer->id)];
+        if (email_enabled()) {
+            array_unshift($emailRules, 'required'); 
+        } else {
+            array_unshift($emailRules, 'nullable');
+        }
 
         $request->validate([
             'first_name' => 'required|string|max:50|regex:/^[\pL\s\-]+$/u',
             'last_name' => 'required|string|max:50|regex:/^[\pL\s\-]+$/u',
-            'email' => [
-                'required', 'email',
-                Rule::unique('customers', 'email')->ignore($customer->id)
-            ],
+            'email' => $emailRules,
+
+            // 'email' => [
+            //     'required', 'email',
+            //     Rule::unique('customers', 'email')->ignore($customer->id)
+            // ],
             'phone_full' => [
                 'required',
                 'regex:/^\+?[1-9][0-9]{6,15}$/',
@@ -666,35 +700,75 @@ class CustomerAuthController extends Controller
         ]);
 
 
-        // 1. Store customer locally
-        $customer->update([
+        // 1. Update customer locally without email
+        $updateData = [
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
-            'email' => $request->email,
             'phone_number' => $request->phone_full,
-            'timezone' => $request->timezone,
+            'timezone' => $windowsName,
             'country_code' => $request->country_code,
-            'email_verified_at' => null, // ضروري لإجباره على التفعيل
-        ]);
+        ];
+
+        // if enabled email
+        if (email_enabled()) {
+            $updateData['email'] = $request->email;
+            $updateData['email_verified_at'] = null;
+        }
+
+        $customer->update($updateData);
+
+        // 2. if enabled eamil Generate email verification token
+        if (email_enabled()) {
+            do {
+                $token = Str::random(64);
+                $existingToken = EmailVerification::where('token', $token)->first();
+            } while ($existingToken);
+
+            EmailVerification::create([
+                'email' => $request->email,
+                'token' => $token,
+                'expires_at' => Carbon::now()->addMinutes(30),
+            ]);
+
+            Mail::to($request->email)->send(new \App\Mail\VerifyCustomerEmail($token, $request->email));
+
+            return redirect()->route('customer.verify.notice');
+        } else {
+
+
+            return redirect()->route('customer.login.form')->with('success', 'Profile updated successfully.You can login ');
+        }
+
+
+        // // 1. Store customer locally
+        // $customer->update([
+        //     'first_name' => $request->first_name,
+        //     'last_name' => $request->last_name,
+        //     'email' => $request->email,
+        //     'phone_number' => $request->phone_full,
+        //     'timezone' => $request->timezone,
+        //     'country_code' => $request->country_code,
+        //     'email_verified_at' => null, // ضروري لإجباره على التفعيل
+        // ]);
             
-        // 2. Generate email verification token
-        do {
-            $token = Str::random(64); 
+        // // 2. Generate email verification token
+        // do {
+        //     $token = Str::random(64); 
         
-            $existingToken = EmailVerification::where('token', $token)->first();
+        //     $existingToken = EmailVerification::where('token', $token)->first();
 
-        } while ($existingToken); 
+        // } while ($existingToken); 
             
-        EmailVerification::create([
-            'email' => $request->email,
-            'token' => $token,
-            'expires_at' => Carbon::now()->addMinutes(30),
-        ]);
+        // EmailVerification::create([
+        //     'email' => $request->email,
+        //     'token' => $token,
+        //     'expires_at' => Carbon::now()->addMinutes(30),
+        // ]);
 
-        // 5. Send verification email
-        Mail::to($request->email)->send(new \App\Mail\VerifyCustomerEmail($token, $request->email));
+        // // 5. Send verification email
+        // Mail::to($request->email)->send(new \App\Mail\VerifyCustomerEmail($token, $request->email));
 
-        return redirect()->route('customer.verify.notice');
+        // return redirect()->route('customer.verify.notice');
 
     
     }

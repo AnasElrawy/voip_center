@@ -48,10 +48,16 @@
                         </button>
                     </form>
 
-                    <div class="mt-3 text-center">
-                        <a href="{{ route('customer.forgotPassword.form') }}" class="small">Forgot Password?</a>
-                    </div>
                     
+                    @if (email_enabled())
+
+                        <div class="mt-3 text-center">
+                            <a href="{{ route('customer.forgotPassword.form') }}" class="small">Forgot Password?</a>
+                        </div>
+
+                    @endif
+
+
                     <div class="mt-3 text-center">
                         <a href="{{ route('customer.register.form') }}" class="small">Don't have an account? Create one</a>
                     </div>

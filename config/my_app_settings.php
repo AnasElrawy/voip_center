@@ -16,5 +16,15 @@ return [
     'version' => env ('VERSION'),
 
     'traiffrate' => env('TRAIFF_RATE'),
+
+    'email_enabled' => env('EMAIL_ENABLE'),
+
+    'logo_image' => env('LOGO_IMAGE', null),
+    'layout_color' => env('LAYOUT_COLOR', '#0d6efd'),
+
+    'symbol' => env('CURRENCY_SYMBOL', '€'),
+    'rate' => env('CONVERSION_RATE', 1.0),
+
     
 ];
+

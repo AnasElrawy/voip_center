@@ -45,17 +45,22 @@
               </div>
             </div>
 
-            {{-- Email --}}
-            <div class="mb-2">
-              <label for="email" class="form-label">Email</label>
-              <input type="email" id="email" name="email" value="{{ old('email') }}"
-                     class="form-control @error('email') is-invalid @enderror" required>
-              @error('email')
-                <div class="invalid-feedback">{{ $message }}</div>
-              @else
-                <div class="form-text">We'll never share your email.</div>
-              @enderror
-            </div>
+            @if (email_enabled())
+            
+              {{-- Email --}}
+              <div class="mb-2">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" id="email" name="email" value="{{ old('email') }}"
+                      class="form-control @error('email') is-invalid @enderror" required>
+                @error('email')
+                  <div class="invalid-feedback">{{ $message }}</div>
+                @else
+                  <div class="form-text">We'll never share your email.</div>
+                @enderror
+              </div>
+
+            @endif
+
 
             {{-- Username --}}
             <div class="mb-2">
