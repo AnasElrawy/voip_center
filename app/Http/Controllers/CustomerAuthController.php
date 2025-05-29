@@ -630,9 +630,9 @@ class CustomerAuthController extends Controller
     public function showCompleteRegistrationForm(Request $request)
     {
 
-        // if (!session('allow_complete_registration')) {
-        //     abort(403, 'Unauthorized access');
-        // }
+        if (!session('allow_complete_registration')) {
+            abort(403, 'Unauthorized access');
+        }
 
         session()->forget('allow_complete_registration');
 

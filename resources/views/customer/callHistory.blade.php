@@ -64,7 +64,7 @@
             <tbody>
                 @foreach($calls as $call)
                     <tr>
-                        <td>{{ $call['start_time'] }}</td>
+                        <td>{{ \Carbon\Carbon::parse($call['start_time'])->format('Y-m-d h:i:s a') }}</td>
                         <td>{{ $call['destination'] }}</td>
                         <td>{{ $call['duration'] }}</td>
                         <td>{{currency_symbol()}}  {{ $call['charge'] }}</td>

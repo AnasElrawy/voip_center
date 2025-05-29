@@ -64,7 +64,7 @@
               <label for="username" class="form-label">Username</label>
               <input  type="text" id="username" name="username" 
                     value="{{ old('username', $username) }}"
-                    class="form-control" disabled>
+                    class="form-control readonly-disabled" readonly>
             </div>
 
             @if (email_enabled())
@@ -73,8 +73,8 @@
                 <label for="email" class="form-label">Email</label>
                 <input type="email" id="email" name="email" 
                       value="{{ old('email', $email) }}"
-                      class="form-control @error('email') is-invalid @enderror"
-                      @if (!empty($email)) disabled @endif>
+                      class="form-control @error('email') is-invalid @enderror readonly-disabled"
+                      @if (!empty($email)) readonly @endif>
               </div>
             @endif
 
@@ -118,6 +118,13 @@
 </div>
 
 <style>
+
+  .readonly-disabled {
+    background-color: #e9ecef;  
+    opacity: 1;                 
+    pointer-events: none;       
+  }
+
   .iti { width: 100%; }
 </style>
 <script type="module">

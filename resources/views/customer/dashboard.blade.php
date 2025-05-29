@@ -167,9 +167,9 @@
                         <tbody>
                             @foreach($recentCalls as $call)
                                 <tr>
-                                    <td>{{ \Carbon\Carbon::parse($call['datetime'])->format('Y-m-d H:i') }}</td>
+                                    <td>{{ \Carbon\Carbon::parse($call['datetime'])->format('Y-m-d h:i:s a') }}</td>
                                     <td>{{ $call['number'] }}</td>
-                                    <td>{{ $call['duration'] }} mins</td>
+                                    <td>{{ $call['duration'] }} </td>
                                     <td>{{currency_symbol()}} {{ number_format($call['cost'], 2) }}</td>
                                 </tr>
                             @endforeach
