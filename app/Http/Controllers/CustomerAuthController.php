@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use App\Models\EmailVerification;
 use App\Models\LoginLog;
-// use App\Models\EmailVerification;
 use App\Models\Customer;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
@@ -18,6 +17,10 @@ use Illuminate\Support\Facades\Crypt;
 use App\Http\Requests\StoreCustomerRequest;
 use Illuminate\Validation\Rule;
 use App\Helpers\TimeZoneHelper;
+use App\Services\CustomerAuthService;
+use Illuminate\Validation\ValidationException;
+
+
 
 
 
@@ -110,21 +113,27 @@ class CustomerAuthController extends Controller
         
         
                 // 4. Generate email verification token
-                do {
-                    $token = Str::random(64); 
-                
-                    $existingToken = EmailVerification::where('token', $token)->first();
 
-                } while ($existingToken); 
+                // بعد تخزين أو تعديل بيانات العميل
+
+                $service = new CustomerAuthService();
+                $service->generateAndSendVerification($request->email);
+
+                // do {
+                //     $token = Str::random(64); 
+                
+                //     $existingToken = EmailVerification::where('token', $token)->first();
+
+                // } while ($existingToken); 
                     
-                EmailVerification::create([
-                    'email' => $request->email,
-                    'token' => $token,
-                    'expires_at' => Carbon::now()->addMinutes(30),
-                ]);
+                // EmailVerification::create([
+                //     'email' => $request->email,
+                //     'token' => $token,
+                //     'expires_at' => Carbon::now()->addMinutes(30),
+                // ]);
         
-                // 5. Send verification email
-                Mail::to($request->email)->send(new \App\Mail\VerifyCustomerEmail($token, $request->email));
+                // // 5. Send verification email
+                // Mail::to($request->email)->send(new \App\Mail\VerifyCustomerEmail($token, $request->email));
                 
                 DB::commit();
         
@@ -283,19 +292,23 @@ class CustomerAuthController extends Controller
             return redirect()->route('customer.login')->with('info', 'Your email is already verified. You can login now.');
         }
 
-        do {
-            $token = Str::random(64); 
-        
-            $existingToken = EmailVerification::where('token', $token)->first();
-            
-        } while ($existingToken); 
-        EmailVerification::create([
-            'email' => $request->email,
-            'token' => $token,
-            'expires_at' => Carbon::now()->addMinutes(30),
-        ]);
+        $service = new CustomerAuthService();
+        $service->generateAndSendVerification($request->email);
 
-        Mail::to($request->email)->send(new \App\Mail\VerifyCustomerEmail($token, $request->email));
+
+        // do {
+        //     $token = Str::random(64); 
+        
+        //     $existingToken = EmailVerification::where('token', $token)->first();
+            
+        // } while ($existingToken); 
+        // EmailVerification::create([
+        //     'email' => $request->email,
+        //     'token' => $token,
+        //     'expires_at' => Carbon::now()->addMinutes(30),
+        // ]);
+
+        // Mail::to($request->email)->send(new \App\Mail\VerifyCustomerEmail($token, $request->email));
 
         // return redirect()->route('customer.login')->with('message', 'A new verification link has been sent to your email.');
         
@@ -378,13 +391,32 @@ class CustomerAuthController extends Controller
 
             return redirect()->route('customer.login.form')->with('error', 'Incorrect username or password.');
         }
+
+        if(
+            !$customer->first_name ||
+            !$customer->last_name ||
+            (email_enabled() && !$customer->email) ||
+            !$customer->phone_number // لو ده شرط عندك
+        )
+        {
+            session(['allow_complete_registration' => true]);
+            session(['pending_user_id' => $customer->id]);
+
+            return redirect()->route('customer.complete-registration', array_filter(['username' => $customer->username ]))
+                ->with('info', 'Please complete your registration.');
+        }
     
 
         if (email_enabled()) {
             
             // 2. تحقق من تفعيل الحساب
             if (! $customer->is_active || !$customer->email_verified_at) {
-                return back()->withErrors(['msg' => 'Your account is not activated yet. Please check your email.']);
+                // dd($customer);
+                $service = new CustomerAuthService();
+                $service->generateAndSendVerification($customer->email);
+
+                // return back()->withErrors(['msg' => 'Your account is not activated yet. Please check your email.']);
+                return back()->with('warning', 'Your account is not yet activated. We’ve sent you a new verification link. Please check your email.');
             }
         
         }
@@ -654,9 +686,10 @@ class CustomerAuthController extends Controller
     {
         $id = session('pending_user_id');
 
+        
         $pendingCustpmer=Customer::find($id);
         if ($pendingCustpmer->username != $request->username ) {
-
+            
             $changeuserinfoApiResponse = Http::get(config('my_app_settings.voip.api_url'), [
                 'command' => 'changeuserinfo',
                 'username' => config('my_app_settings.voip.username'),
@@ -665,7 +698,7 @@ class CustomerAuthController extends Controller
                 'customerblocked' => 'true',
             ]);
 
-            abort(403, 'Unauthorized access.');
+            // abort(403, 'Unauthorized access.');
         }
 
         $windowsName = TimeZoneHelper::getWindowsFromIana($request->timezone); 
@@ -678,45 +711,50 @@ class CustomerAuthController extends Controller
             array_unshift($emailRules, 'nullable');
         }
 
-        $request->validate([
-            'first_name' => 'required|string|max:50|regex:/^[\pL\s\-]+$/u',
-            'last_name' => 'required|string|max:50|regex:/^[\pL\s\-]+$/u',
-            'email' => $emailRules,
 
-            // 'email' => [
-            //     'required', 'email',
-            //     Rule::unique('customers', 'email')->ignore($customer->id)
-            // ],
-            'phone_full' => [
-                'required',
-                'regex:/^\+?[1-9][0-9]{6,15}$/',
-                Rule::unique('customers', 'phone_number')->ignore($customer->id),
-                function ($attribute, $value, $fail) {
-                    if (preg_match('/(.)\1{5,}/', $value)) {
-                        $fail("The phone number must not contain repeated digits.");
+        try {
+            $request->validate([
+                'first_name' => 'required|string|max:50|regex:/^[\pL\s\-]+$/u',
+                'last_name' => 'required|string|max:50|regex:/^[\pL\s\-]+$/u',
+                'email' => $emailRules,
+
+                // 'email' => [
+                //     'required', 'email',
+                //     Rule::unique('customers', 'email')->ignore($customer->id)
+                // ],
+                'phone_full' => [
+                    'required',
+                    'regex:/^\+?[1-9][0-9]{6,15}$/',
+                    Rule::unique('customers', 'phone_number')->ignore($customer->id),
+                    function ($attribute, $value, $fail) {
+                        if (preg_match('/(.)\1{5,}/', $value)) {
+                            $fail("The phone number must not contain repeated digits.");
+                        }
                     }
-                }
-            ],
-            'country_code' => 'nullable|string|size:2',
-            'timezone' => 'nullable|string|max:50',
-            'ip_address' => 'nullable|ip',
-        ], [
-            'first_name.required' => 'First name is required.',
-            'first_name.string' => 'First name must be a valid string.',
-            'first_name.max' => 'First name cannot exceed 50 characters.',
-            'first_name.regex' => 'First name can only contain letters, spaces, and hyphens.',
-            'last_name.required' => 'Last name is required.',
-            'last_name.string' => 'Last name must be a valid string.',
-            'last_name.max' => 'Last name cannot exceed 50 characters.',
-            'last_name.regex' => 'Last name can only contain letters, spaces, and hyphens.',
-            'phone_full.required' => 'Phone number is required.',
-            'phone_full.regex' => 'Please enter a valid international phone number (e.g., +441234567890).',
-            'phone_full.unique' => 'This phone number is already in use.',
-            'email.required' => 'Email is required.',
-            'email.email' => 'Please enter a valid email address.',
-            'email.unique' => 'This email is already registered.',
-        ]);
-
+                ],
+                'country_code' => 'nullable|string|size:2',
+                'timezone' => 'nullable|string|max:50',
+                'ip_address' => 'nullable|ip',
+            ], [
+                'first_name.required' => 'First name is required.',
+                'first_name.string' => 'First name must be a valid string.',
+                'first_name.max' => 'First name cannot exceed 50 characters.',
+                'first_name.regex' => 'First name can only contain letters, spaces, and hyphens.',
+                'last_name.required' => 'Last name is required.',
+                'last_name.string' => 'Last name must be a valid string.',
+                'last_name.max' => 'Last name cannot exceed 50 characters.',
+                'last_name.regex' => 'Last name can only contain letters, spaces, and hyphens.',
+                'phone_full.required' => 'Phone number is required.',
+                'phone_full.regex' => 'Please enter a valid international phone number (e.g., +441234567890).',
+                'phone_full.unique' => 'This phone number is already in use.',
+                'email.required' => 'Email is required.',
+                'email.email' => 'Please enter a valid email address.',
+                'email.unique' => 'This email is already registered.',
+            ]);
+        } catch (ValidationException $e) {
+            session(['allow_complete_registration' => true]);
+            throw $e; // ترجع بالErrors كأنها Validation عادية
+        }
 
         // 1. Update customer locally without email
         $updateData = [
@@ -737,18 +775,22 @@ class CustomerAuthController extends Controller
 
         // 2. if enabled eamil Generate email verification token
         if (email_enabled()) {
-            do {
-                $token = Str::random(64);
-                $existingToken = EmailVerification::where('token', $token)->first();
-            } while ($existingToken);
 
-            EmailVerification::create([
-                'email' => $request->email,
-                'token' => $token,
-                'expires_at' => Carbon::now()->addMinutes(30),
-            ]);
+            $service = new CustomerAuthService();
+            $service->generateAndSendVerification($request->email);
 
-            Mail::to($request->email)->send(new \App\Mail\VerifyCustomerEmail($token, $request->email));
+            // do {
+            //     $token = Str::random(64);
+            //     $existingToken = EmailVerification::where('token', $token)->first();
+            // } while ($existingToken);
+
+            // EmailVerification::create([
+            //     'email' => $request->email,
+            //     'token' => $token,
+            //     'expires_at' => Carbon::now()->addMinutes(30),
+            // ]);
+
+            // Mail::to($request->email)->send(new \App\Mail\VerifyCustomerEmail($token, $request->email));
 
             return redirect()->route('customer.verify.notice');
         } else {

@@ -19,6 +19,7 @@ return [
 
     'email_enabled' => env('EMAIL_ENABLE'),
 
+    'web_name' => env('WEB_NAME', null),
     'logo_image' => env('LOGO_IMAGE', null),
     'layout_color' => env('LAYOUT_COLOR', '#0d6efd'),
 

@@ -105,6 +105,11 @@ Route::middleware(['auth:customer'])->group(function () {
     Route::get('/change-password', [CustomerController::class, 'showChangePassword'])->name('customer.changePassword.form');
     Route::post('/change-password', [CustomerController::class, 'changePassword'])->name('customer.changePassword');
 
+    // Route::get('/profile', [CustomerController::class, 'profile'])->name('customer.profile');
+
+    Route::get('/profile', [CustomerController::class, 'showProfil'])->name('customer.profile.show');
+    Route::put('/profile', [CustomerController::class, 'updateProfile'])->name('customer.profile.update');
+
     Route::post('logout', [CustomerAuthController::class, 'logout']) ->name('logout');
 
 });

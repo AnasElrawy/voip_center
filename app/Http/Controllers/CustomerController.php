@@ -255,6 +255,35 @@ class CustomerController extends Controller
         }
 
     }
+
+
+    public function showProfil()
+    {
+        return view('customer.profile.show');
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = auth('customer')->user();
+
+        $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|email|unique:customers,email,' . $user->id,
+            'phone_number' => 'required|string|unique:customers,phone_number,' . $user->id,
+            'timezone' => 'nullable|string|max:100',
+        ]);
+
+        $user->update([
+            'first_name' => $request->first_name,
+            'last_name'  => $request->last_name,
+            'email'      => $request->email,
+            'phone_number' => $request->phone_number,
+            'timezone'   => $request->timezone,
+        ]);
+
+        return redirect()->route('customer.profile.show')->with('success', 'Profile updated successfully.');
+    }
     
 
 }

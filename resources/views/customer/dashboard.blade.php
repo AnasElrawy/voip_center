@@ -83,12 +83,36 @@
         padding: 0.75rem 1rem;
     }
 
-    .app-download-badge {
+    /* .app-download-badge {
         height: 45px;
         width: auto;
         display: inline-block;
-    }
+    } */
 
+      /* .app-download-badge {
+    height: 50px;
+    width: auto;
+    max-width: 200px;
+  } */
+  .app-download-badge {
+    height: 50px;
+    width: auto;
+    object-fit: contain;
+  }
+
+  .app-download-badge {
+  height: 50px;
+  width: auto;
+  object-fit: contain;
+  border: 1px solid #ccc;            /* بوردر بسيط */
+  border-radius: 10px;               /* أطراف ناعمة */
+  transition: box-shadow 0.3s ease;  /* حركة سلسة عند الهوفر */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* ظل خفيف افتراضي */
+}
+
+.app-download-badge:hover {
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2); /* ظل أقوى عند الهوفر */
+}
 
 </style>
 
@@ -137,7 +161,7 @@
                 </a>
 
                 <a href="https://apps.apple.com/nl/app/yourdialer/id498950671" target="_blank">
-                    <img src="{{ asset('images/app-store-badge.svg') }}" alt="Download on App Store" class="app-download-badge">
+                    <img src="{{ asset('images/app-store-badge.png') }}" alt="Download on App Store" class="app-download-badge">
                 </a>
             </div>
 

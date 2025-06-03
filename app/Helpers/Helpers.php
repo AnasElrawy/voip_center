@@ -8,6 +8,13 @@ if (!function_exists('email_enabled')) {
 }
 
 
+if (!function_exists('web_name')) {
+    function web_name(): ?string
+    {
+        return config('my_app_settings.web_name');
+    }
+}
+
 if (!function_exists('logo_image')) {
     function logo_image(): ?string
     {

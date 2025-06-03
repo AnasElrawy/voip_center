@@ -3,7 +3,7 @@
 @section('content')
 
 <!-- Fullscreen container -->
-<div class="container-fluid vh-100">
+<div class="container-fluid " >
   <div class="row h-100">
 
     <!-- Left side: Illustration Image -->

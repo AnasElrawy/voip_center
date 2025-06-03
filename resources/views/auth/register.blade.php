@@ -6,7 +6,7 @@
     <div class="alert alert-danger">{{ $errors->first('msg') }}</div>
 @endif
 
-<div class="container-fluid vh-100">
+<div class="container-fluid ">
   <div class="row h-100">
     {{-- the image --}}
     <div class="col-lg-6 d-none d-lg-flex align-items-center justify-content-center p-0">

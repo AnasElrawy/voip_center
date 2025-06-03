@@ -6,17 +6,9 @@
   <div class="alert alert-success text-center">{{ session('success') }}</div>
 @endif
 
-@if ($errors->any())
-  <div class="alert alert-danger">
-    <ul class="mb-0">
-      @foreach ($errors->all() as $error)
-        <li>{{ $error }}</li>
-      @endforeach
-    </ul>
-  </div>
-@endif
 
-<div class="container-fluid vh-100">
+
+<div class="container-fluid" >
   <div class="row h-100">
     {{-- the image --}}
     <div class="col-lg-6 d-none d-lg-flex align-items-center justify-content-center p-0">
@@ -73,23 +65,22 @@
                 <label for="email" class="form-label">Email</label>
                 <input type="email" id="email" name="email" 
                       value="{{ old('email', $email) }}"
-                      class="form-control @error('email') is-invalid @enderror readonly-disabled"
+                      class="form-control @error('email') is-invalid @enderror @if (!empty($email)) readonly-disabled @endif"
                       @if (!empty($email)) readonly @endif>
+                @error('email')
+                  <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
               </div>
             @endif
 
 
             {{-- Phone --}}
-            <div class="mb-3">
-              <label for="phone" class="form-label">Phone Number</label>
-              <input type="tel" id="phone" name="phone_display"
-                    class="form-control @error('phone') is-invalid @enderror"
-                    required>
-
-              <input type="hidden" name="phone" id="phone_hidden">
-
-              @error('phone')
-                <div class="invalid-feedback">{{ $message }}</div>
+            <div class="mb-2">
+              <label class="form-label">Phone Number</label>
+              <input type="text" id="phone" name="phone" value="{{ old('phone') }}"
+                     class="form-control @error('phone_full') is-invalid @enderror" placeholder="Phone number" required>
+              @error('phone_full')
+                <div class="invalid-feedback d-block">{{ $message }}</div>
               @enderror
             </div>
 
